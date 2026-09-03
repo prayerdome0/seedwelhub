@@ -484,7 +484,7 @@ function ImageUrlField({ value, onChange, label = 'Image URL', id }) {
       <div className="image-url-field">
         <div className="image-url-field__preview">
           {value && valid ? (
-            <img src={value} alt="" onError={(e) => { e.currentTarget.style.opacity = 0.15; }} />
+            <img loading="lazy" decoding="async" src={value} alt="" onError={(e) => { e.currentTarget.style.opacity = 0.15; }} />
           ) : (
             <span aria-hidden="true">🖼️</span>
           )}
@@ -711,7 +711,7 @@ function ProductsTab({ user, business, products, showToast }) {
                     <td>
                       <div className="cell-media">
                         {p.image ? (
-                          <img src={p.image} alt="" className="cell-media__img" />
+                          <img loading="lazy" decoding="async" src={p.image} alt="" className="cell-media__img" />
                         ) : (
                           <span className="cell-media__img cell-media__img--empty">📦</span>
                         )}
@@ -907,7 +907,7 @@ function InventoryTab({ user, business, inventory, showToast }) {
                     <td>
                       <div className="cell-media">
                         {item.image ? (
-                          <img src={item.image} alt="" className="cell-media__img" />
+                          <img loading="lazy" decoding="async" src={item.image} alt="" className="cell-media__img" />
                         ) : (
                           <span className="cell-media__img cell-media__img--empty">📦</span>
                         )}
@@ -1165,7 +1165,7 @@ function ImportTab({ user, business, showToast, onImported }) {
                     <td>{r.line}</td>
                     <td>
                       {r.data.image && isValidImageUrl(r.data.image) ? (
-                        <img src={r.data.image} alt="" className="cell-media__img" />
+                        <img loading="lazy" decoding="async" src={r.data.image} alt="" className="cell-media__img" />
                       ) : (
                         <span className="cell-media__img cell-media__img--empty">🖼️</span>
                       )}

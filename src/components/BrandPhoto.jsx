@@ -8,7 +8,7 @@ import { REAL_LOGO } from '../assets';
 export default function BrandPhoto({ src, alt, label, objectPosition = 'center', className = '' }) {
   return (
     <div className={`banner-photo ${className}`}>
-      <img
+      <img loading="lazy" decoding="async"
         src={src}
         alt={alt}
         className="banner-photo__image"
@@ -17,7 +17,7 @@ export default function BrandPhoto({ src, alt, label, objectPosition = 'center',
       />
       <div className="banner-photo__shade" aria-hidden="true" />
       <div className="banner-photo__brand" aria-label="Seedwel Hub">
-        <img src={REAL_LOGO} alt="" draggable={false} />
+        <img loading="lazy" decoding="async" src={REAL_LOGO} alt="" draggable={false} />
         <span>Seedwel <strong>Hub</strong></span>
       </div>
       {label && (

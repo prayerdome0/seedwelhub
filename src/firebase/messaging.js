@@ -5,7 +5,8 @@ import { app } from './config';
 // must live server-side (in the Firebase project settings) and is never placed
 // in React source, public/, GitHub, HTML or browser storage.
 export const VAPID_PUBLIC_KEY =
-  import.meta.env.VITE_FIREBASE_VAPID_PUBLIC_KEY || '';
+  import.meta.env.VITE_FIREBASE_VAPID_PUBLIC_KEY ||
+  'BIs1W4xzjAB4UHcpZN4GS7PkOGpyo_jX-KPyvFWGmery1aoG_SG12JE5X_7U5sxH-M-V8WdrebjDqfRGPxIrs10';
 
 // Cache the messaging instance (only created when the browser supports it).
 let messagingInstance = null;

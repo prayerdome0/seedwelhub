@@ -266,7 +266,7 @@ export default function SellerOnboardingPage() {
             {myBusinesses.data.map((b) => (
               <Link key={b.id} to={`/business/${b.id}`} className="onboard-business">
                 {b.logo ? (
-                  <img src={b.logo} alt={b.name} className="onboard-business__logo" />
+                  <img loading="lazy" decoding="async" src={b.logo} alt={b.name} className="onboard-business__logo" />
                 ) : (
                   <span className="onboard-business__logo onboard-business__logo--empty">
                     {b.name?.[0] || 'B'}
@@ -304,7 +304,7 @@ export default function SellerOnboardingPage() {
           <label className="form__label">Logo</label>
           <div className="onboard-logo">
             {logoUrl ? (
-              <img src={logoUrl} alt="Business logo preview" className="onboard-logo__preview" />
+              <img loading="lazy" decoding="async" src={logoUrl} alt="Business logo preview" className="onboard-logo__preview" />
             ) : (
               <span className="onboard-logo__placeholder">{businessForm.name?.[0] || '🏪'}</span>
             )}
@@ -417,7 +417,7 @@ export default function SellerOnboardingPage() {
               <label className="form__label">Photo</label>
               <div className="onboard-logo">
                 {productImageUrl ? (
-                  <img src={productImageUrl} alt="Product preview" className="onboard-logo__preview" />
+                  <img loading="lazy" decoding="async" src={productImageUrl} alt="Product preview" className="onboard-logo__preview" />
                 ) : (
                   <span className="onboard-logo__placeholder">📦</span>
                 )}
@@ -475,7 +475,7 @@ export default function SellerOnboardingPage() {
               <label className="form__label">Photo</label>
               <div className="onboard-logo">
                 {serviceImageUrl ? (
-                  <img src={serviceImageUrl} alt="Service preview" className="onboard-logo__preview" />
+                  <img loading="lazy" decoding="async" src={serviceImageUrl} alt="Service preview" className="onboard-logo__preview" />
                 ) : (
                   <span className="onboard-logo__placeholder">🛠️</span>
                 )}

@@ -117,7 +117,7 @@ export default function AppIntro({ onDone }) {
           <em>Presents</em>
         </p>
         <div className="app-intro__logo">
-          <img src={REAL_LOGO} alt="Seedwel Hub" draggable={false} />
+          <img loading="lazy" decoding="async" src={REAL_LOGO} alt="Seedwel Hub" draggable={false} />
         </div>
         <h1 className="app-intro__wordmark">SEEDWEL HUB</h1>
         <p className="app-intro__tagline">BUY · SELL · MANAGE · GROW</p>

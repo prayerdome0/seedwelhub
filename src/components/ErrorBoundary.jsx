@@ -33,7 +33,7 @@ export default class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="error-boundary">
-          <img src={WATERMARK_LOGO} alt="Seedwel Hub" style={{ height: 56, marginBottom: 16 }} />
+          <img loading="lazy" decoding="async" src={WATERMARK_LOGO} alt="Seedwel Hub" style={{ height: 56, marginBottom: 16 }} />
           <div className="error-boundary__icon" aria-hidden="true">⚠️</div>
           <h1 className="error-boundary__title">Something went wrong</h1>
           <p className="error-boundary__msg">

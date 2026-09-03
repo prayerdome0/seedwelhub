@@ -59,7 +59,7 @@ export default function TshirtLogo({ logo = REAL_LOGO, color = '#e7f6ea', classN
           </rect>
         </g>
       </svg>
-      <img src={logo} alt="" className="tshirt__logo" draggable={false} />
+      <img loading="lazy" decoding="async" src={logo} alt="" className="tshirt__logo" draggable={false} />
     </div>
   );
 }
