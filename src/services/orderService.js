@@ -4,6 +4,7 @@ import { COLLECTIONS, ORDER_STATUS } from '../utils/constants';
 import { generateOrderNumber } from '../utils/ids';
 import { createNotification } from './notificationService';
 import { formatCurrency } from '../utils/format';
+import { DEFAULT_CURRENCY, currencyCode } from '../utils/constants';
 
 const COL = COLLECTIONS.ORDERS;
 const ITEMS = COLLECTIONS.ORDER_ITEMS;
@@ -80,6 +81,7 @@ export async function placeOrder({
   paymentMethod = '',
   note = '',
   deliveryFee = 0,
+  currency = 'UGX',
   ...extra
 }) {
   const normalizedItems = (items || []).map((item) => ({
@@ -90,6 +92,7 @@ export async function placeOrder({
   const delivery = Number(deliveryFee) || 0;
   const subtotal = calculateTotal(normalizedItems);
   const total = subtotal + delivery;
+  const orderCurrency = currencyCode(currency) || DEFAULT_CURRENCY;
 
   const order = await createOrder({
     ...extra,
@@ -102,6 +105,7 @@ export async function placeOrder({
     address,
     paymentMethod,
     note,
+    currency: currencyCode(currency),
     subtotal,
     deliveryFee: delivery,
     total,
@@ -116,7 +120,7 @@ export async function placeOrder({
     await createNotification({
       recipientId: ownerId,
       title: 'New order 🛒',
-      message: `${buyerName || 'A buyer'} placed an order for ${itemLabel} (${quantity} item${quantity === 1 ? '' : 's'}). Total ${formatCurrency(total)}.`,
+      message: `${buyerName || 'A buyer'} placed an order for ${itemLabel} (${quantity} item${quantity === 1 ? '' : 's'}). Total ${formatCurrency(total, orderCurrency)}.`,
       type: 'orders',
       related,
     }).catch(() => {});
@@ -125,7 +129,7 @@ export async function placeOrder({
   await createNotification({
     recipientId: buyerId,
     title: 'Order placed ✅',
-    message: `Your order ${order.orderNumber} was placed for ${quantity} item${quantity === 1 ? '' : 's'} — total ${formatCurrency(total)}.`,
+    message: `Your order ${order.orderNumber} was placed for ${quantity} item${quantity === 1 ? '' : 's'} — total ${formatCurrency(total, orderCurrency)}.`,
     type: 'orders',
     related,
   }).catch(() => {});

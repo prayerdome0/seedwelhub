@@ -83,6 +83,7 @@ export default function ProductDetailPage() {
         address,
         paymentMethod,
         note,
+        currency: product.currency || product.businessCurrency,
       });
       showToast(`Order ${order.orderNumber} placed successfully.`, 'success');
       navigate(`/order/${order.id}`);
@@ -179,7 +180,7 @@ export default function ProductDetailPage() {
             {product.location && <p className="text-muted mt-8">📍 {product.location}</p>}
 
             <div className="buy-box mt-16">
-              <div className="buy-box__price">{formatCurrency(product.price)}</div>
+              <div className="buy-box__price">{formatCurrency(product.price, product.currency)}</div>
               {product.priceType && <p className="text-muted">{product.priceType}</p>}
 
               <div className="buy-box__qty">
@@ -211,6 +212,7 @@ export default function ProductDetailPage() {
                     buyer={profile}
                     summary={`${qty} × ${product.name}`}
                     total={(Number(product.price) || 0) * qty}
+                    currency={product.currency}
                     submitting={placing}
                     submitLabel="Place Order"
                     onCancel={() => setCheckoutOpen(false)}
@@ -258,13 +260,13 @@ export default function ProductDetailPage() {
               {product.retailPrice && (
                 <>
                   <dt>Retail</dt>
-                  <dd>{formatCurrency(product.retailPrice)}</dd>
+                  <dd>{formatCurrency(product.retailPrice, product.currency)}</dd>
                 </>
               )}
               {product.wholesalePrice && (
                 <>
                   <dt>Wholesale</dt>
-                  <dd>{formatCurrency(product.wholesalePrice)}</dd>
+                  <dd>{formatCurrency(product.wholesalePrice, product.currency)}</dd>
                 </>
               )}
             </dl>

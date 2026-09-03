@@ -4,7 +4,7 @@ import { NotFoundState, ErrorState, LoadingState } from '../components/PageState
 import useDocument from '../hooks/useDocument';
 import { getOrder } from '../services/orderService';
 import { ORDER_STATUS_FLOW } from '../utils/constants';
-import { formatDate } from '../utils/format';
+import { formatCurrency, formatDate } from '../utils/format';
 
 export default function OrderTrackingPage() {
   const { id } = useParams();
@@ -62,7 +62,7 @@ export default function OrderTrackingPage() {
         <dl className="kv">
           <dt>Order</dt><dd>{order.orderNumber}</dd>
           <dt>Business</dt><dd>{order.businessName || '—'}</dd>
-          <dt>Total</dt><dd>{order.total}</dd>
+          <dt>Total</dt><dd>{formatCurrency(order.total, order.currency)}</dd>
         </dl>
       </div>
     </div>

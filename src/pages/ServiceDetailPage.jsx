@@ -69,6 +69,7 @@ export default function ServiceDetailPage() {
         address,
         paymentMethod,
         note,
+        currency: service.currency || service.businessCurrency,
       });
       showToast(`Service request ${order.orderNumber} received.`, 'success');
       navigate(`/order/${order.id}`);
@@ -128,7 +129,7 @@ export default function ServiceDetailPage() {
             <div className="buy-box mt-16">
               {rate !== undefined && rate !== null && (
                 <div className="buy-box__price">
-                  {formatCurrency(rate)}
+                  {formatCurrency(rate, service.currency)}
                   {service.rateUnit && <span className="service-card__unit"> / {service.rateUnit}</span>}
                 </div>
               )}
@@ -147,6 +148,7 @@ export default function ServiceDetailPage() {
                     buyer={profile}
                     summary={service.name}
                     total={rate ?? 0}
+                    currency={service.currency}
                     submitting={placing}
                     submitLabel="Send Service Request"
                     onCancel={() => setCheckoutOpen(false)}

@@ -10,7 +10,12 @@ import { createBusiness, getBusinessesByOwner } from '../services/businessServic
 import { createProduct } from '../services/productService';
 import { createService } from '../services/serviceService';
 import { uploadImageToCloudinary } from '../cloudinary/upload';
-import { BUSINESS_CATEGORIES } from '../utils/constants';
+import {
+  BUSINESS_CATEGORIES,
+  CURRENCIES,
+  DEFAULT_CURRENCY,
+  currencyCode,
+} from '../utils/constants';
 
 const EMPTY_BUSINESS = {
   name: '',
@@ -25,14 +30,23 @@ const EMPTY_BUSINESS = {
   country: '',
   address: '',
   registrationNumber: '',
+  currency: DEFAULT_CURRENCY,
 };
 
-const EMPTY_PRODUCT = { name: '', category: '', description: '', price: '', location: '' };
+const EMPTY_PRODUCT = {
+  name: '',
+  category: '',
+  description: '',
+  price: '',
+  currency: DEFAULT_CURRENCY,
+  location: '',
+};
 const EMPTY_SERVICE = {
   name: '',
   category: '',
   description: '',
   rate: '',
+  currency: DEFAULT_CURRENCY,
   rateUnit: 'per service',
   city: '',
   region: '',
@@ -130,6 +144,7 @@ export default function SellerOnboardingPage() {
         country: businessForm.country.trim(),
         address: businessForm.address.trim(),
         registrationNumber: businessForm.registrationNumber.trim(),
+        currency: currencyCode(businessForm.currency || DEFAULT_CURRENCY),
         logo: logoUrl,
       });
       setBusinessForm(EMPTY_BUSINESS);
@@ -168,6 +183,7 @@ export default function SellerOnboardingPage() {
         category: productForm.category,
         description: productForm.description.trim(),
         price,
+        currency: currencyCode(productForm.currency || selectedBusiness.currency),
         location: productForm.location.trim(),
         image: productImageUrl,
       });
@@ -205,6 +221,7 @@ export default function SellerOnboardingPage() {
         category: serviceForm.category,
         description: serviceForm.description.trim(),
         rate,
+        currency: currencyCode(serviceForm.currency || selectedBusiness.currency),
         rateUnit: serviceForm.rateUnit.trim() || 'per service',
         city: serviceForm.city.trim(),
         region: serviceForm.region.trim(),
@@ -369,8 +386,23 @@ export default function SellerOnboardingPage() {
           {businessInput('address', 'Street address', businessForm.address, 'Plot 123, Main Street')}
         </div>
 
-        <div className="form__group">
-          {businessInput('registrationNumber', 'Registration number (optional)', businessForm.registrationNumber, 'e.g. PACRA no.')}
+        <div className="form__row">
+          <div className="form__group">
+            {businessInput('registrationNumber', 'Registration number (optional)', businessForm.registrationNumber, 'e.g. PACRA no.')}
+          </div>
+          <div className="form__group">
+            <label className="form__label" htmlFor="business-currency">Default currency</label>
+            <select
+              id="business-currency"
+              className="form__select"
+              value={businessForm.currency}
+              onChange={setBusinessField('currency')}
+            >
+              {CURRENCIES.map((currency) => (
+                <option key={currency.code} value={currency.code}>{currency.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <Button type="submit" variant="primary" size="lg" loading={savingBusiness} className="w-full">
@@ -404,13 +436,23 @@ export default function SellerOnboardingPage() {
                 <input id="product-price" type="number" min="0" step="0.01" className="form__input" value={productForm.price} onChange={setProductField('price')} placeholder="0.00" />
               </div>
             </div>
+            <div className="form__row">
+              <div className="form__group">
+                <label className="form__label" htmlFor="product-currency">Currency</label>
+                <select id="product-currency" className="form__select" value={productForm.currency} onChange={setProductField('currency')}>
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency.code} value={currency.code}>{currency.code}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form__group">
+                <label className="form__label" htmlFor="product-location">Location</label>
+                <input id="product-location" className="form__input" value={productForm.location} onChange={setProductField('location')} placeholder="Lusaka" />
+              </div>
+            </div>
             <div className="form__group">
               <label className="form__label" htmlFor="product-description">Description</label>
               <textarea id="product-description" className="form__textarea" value={productForm.description} onChange={setProductField('description')} placeholder="What are you selling?" />
-            </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="product-location">Location</label>
-              <input id="product-location" className="form__input" value={productForm.location} onChange={setProductField('location')} placeholder="Lusaka" />
             </div>
 
             <div className="form__group">
@@ -462,9 +504,17 @@ export default function SellerOnboardingPage() {
                 <input id="service-rateUnit" className="form__input" value={serviceForm.rateUnit} onChange={setServiceField('rateUnit')} placeholder="per service" />
               </div>
               <div className="form__group">
-                <label className="form__label" htmlFor="service-city">City</label>
-                <input id="service-city" className="form__input" value={serviceForm.city} onChange={setServiceField('city')} placeholder="Lusaka" />
+                <label className="form__label" htmlFor="service-currency">Currency</label>
+                <select id="service-currency" className="form__select" value={serviceForm.currency} onChange={setServiceField('currency')}>
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency.code} value={currency.code}>{currency.code}</option>
+                  ))}
+                </select>
               </div>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="service-city">City</label>
+              <input id="service-city" className="form__input" value={serviceForm.city} onChange={setServiceField('city')} placeholder="Lusaka" />
             </div>
             <div className="form__group">
               <label className="form__label" htmlFor="service-description">Description</label>

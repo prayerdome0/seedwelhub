@@ -11,6 +11,7 @@ export default function CheckoutForm({
   summary = '',
   total = 0,
   deliveryFee = 0,
+  currency = 'UGX',
   submitting = false,
   submitLabel = 'Place Order',
   onSubmit,
@@ -111,7 +112,7 @@ export default function CheckoutForm({
 
       {summary && <p className="form__msg form__msg--info">{summary}</p>}
       <div className="form__msg form__msg--info">
-        Items&nbsp;{formatCurrency(amount)} · Delivery&nbsp;{formatCurrency(delivery)} · Total&nbsp;{formatCurrency(amount + delivery)}
+        Items&nbsp;{formatCurrency(amount, currency)} · Delivery&nbsp;{formatCurrency(delivery, currency)} · Total&nbsp;{formatCurrency(amount + delivery, currency)}
       </div>
       {error && <div className="form__msg form__msg--error">{error}</div>}
 

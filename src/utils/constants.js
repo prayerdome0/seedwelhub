@@ -6,6 +6,34 @@ export const APP_TAGLINE = 'Buy. Sell. Manage. Grow.';
 export const DEFAULT_ROLE = 'user';
 export const ADMIN_ROLE = 'admin';
 
+// Supported display currencies for sellers. The *code* is stored on the
+// business/entity and used by Intl formatting everywhere. Amounts are never
+// auto-converted — changing the currency changes the displayed code only.
+export const DEFAULT_CURRENCY = 'UGX';
+
+export const CURRENCIES = [
+  { code: 'UGX', label: 'Ugandan Shilling (UGX)' },
+  { code: 'ZMW', label: 'Zambian Kwacha (ZMW)' },
+  { code: 'USD', label: 'US Dollar (USD)' },
+  { code: 'EUR', label: 'Euro (EUR)' },
+  { code: 'GBP', label: 'British Pound (GBP)' },
+  { code: 'KES', label: 'Kenyan Shilling (KES)' },
+  { code: 'NGN', label: 'Nigerian Naira (NGN)' },
+  { code: 'TZS', label: 'Tanzanian Shilling (TZS)' },
+  { code: 'RWF', label: 'Rwandan Franc (RWF)' },
+  { code: 'ZAR', label: 'South African Rand (ZAR)' },
+];
+
+export function currencyLabel(code = DEFAULT_CURRENCY) {
+  const item = CURRENCIES.find((c) => c.code === code);
+  return item ? item.code : code;
+}
+
+export function currencyCode(value = DEFAULT_CURRENCY) {
+  const code = String(value || '').trim().toUpperCase();
+  return CURRENCIES.some((c) => c.code === code) ? code : DEFAULT_CURRENCY;
+}
+
 export const ACCOUNT_STATUS = {
   ACTIVE: 'active',
   SUSPENDED: 'suspended',

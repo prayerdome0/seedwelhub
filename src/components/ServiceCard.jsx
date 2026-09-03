@@ -25,7 +25,7 @@ export default function ServiceCard({ service }) {
         {location && <div className="service-card__location">📍 {location}</div>}
         {rate !== undefined && rate !== null && (
           <div className="service-card__rate">
-            {formatCurrency(rate)}
+            {formatCurrency(rate, service.currency)}
             {service.rateUnit ? <span className="service-card__unit"> / {service.rateUnit}</span> : null}
           </div>
         )}
