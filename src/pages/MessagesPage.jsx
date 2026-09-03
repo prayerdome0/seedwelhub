@@ -19,6 +19,11 @@ export default function MessagesPage() {
     return otherId ? conv[`displayName_${otherId}`] || 'User' : 'Conversation';
   };
 
+  const otherPhoto = (conv) => {
+    const otherId = (conv.participantIds || []).find((p) => p !== user.uid);
+    return (otherId && conv[`photoURL_${otherId}`]) || conv.otherPhoto || '';
+  };
+
   return (
     <div className="container page">
       <div className="page__header">
@@ -41,7 +46,7 @@ export default function MessagesPage() {
             {data.map((conv) => (
               <li key={conv.id}>
                 <Link to={`/messages/${conv.id}`} className="chat-list__item">
-                  <Avatar src={conv.otherPhoto} name={otherName(conv)} size="md" />
+                  <Avatar src={otherPhoto(conv)} name={otherName(conv)} size="md" />
                   <div className="chat-list__item-body">
                     <div className="chat-list__item-name">{otherName(conv)}</div>
                     <div className="chat-list__item-preview">

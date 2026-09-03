@@ -2,7 +2,6 @@ import { createDoc, getById, patchDoc, queryOnce } from './_base';
 import { serverTimestamp, where } from '../firebase/firestore';
 import { COLLECTIONS } from '../utils/constants';
 import { generateConversationId } from '../utils/ids';
-import { sortByTimestamp } from '../utils/format';
 
 const CONVERSATIONS = COLLECTIONS.CONVERSATIONS;
 const MESSAGES = COLLECTIONS.MESSAGES;
@@ -11,7 +10,7 @@ export function getConversation(id) {
   return getById(CONVERSATIONS, id);
 }
 
-export async function findOrCreateConversation(userA, userB, { product = null } = {}) {
+export async function findOrCreateConversation(userA, userB, { product = null, meta = {} } = {}) {
   const conversationId = generateConversationId(userA, userB);
   const existing = await getById(CONVERSATIONS, conversationId);
   if (existing) return existing;
@@ -27,6 +26,9 @@ export async function findOrCreateConversation(userA, userB, { product = null } 
       unreadCounts: { [userA]: 0, [userB]: 0 },
       type: 'direct',
       ...(product ? { sharedProductId: product } : {}),
+      // Display info per participant (`displayName_<uid>` / `photoURL_<uid>`)
+      // so each side of the thread can render the other person.
+      ...meta,
     },
     conversationId
   );
@@ -34,28 +36,26 @@ export async function findOrCreateConversation(userA, userB, { product = null } 
 }
 
 /**
- * The old query combined array-contains with orderBy(lastMessageAt), which
- * requires a composite Firestore index. A missing index surfaced as a generic
- * network error on the Messages page. Fetch the user's private conversations
- * with the single-field filter and sort the small result set locally instead.
+ * Filtered + ordered queries need a composite Firestore index, which surfaced
+ * as a generic network error on the Messages page. `queryOnce` now handles
+ * this centrally (filter server-side, order client-side); these wrappers keep
+ * the inbox and thread behaviour explicit.
  */
 export async function getConversationsForUser(uid) {
-  const conversations = await queryOnce(CONVERSATIONS, [
+  return queryOnce(CONVERSATIONS, [
     where('participantIds', 'array-contains', uid),
-  ]);
-  return sortByTimestamp(conversations, 'lastMessageAt', 'desc');
+  ], { orderBy: ['lastMessageAt', 'desc'] });
 }
 
 /**
- * Messages use the same index-free approach. Sorting before slicing keeps the
- * newest messages visible even when a conversation has more than the display
- * limit.
+ * Sorting before slicing keeps the newest messages visible even when a
+ * conversation has more than the display limit.
  */
 export async function getMessages(conversationId, count = 200) {
   const messages = await queryOnce(MESSAGES, [
     where('conversationId', '==', conversationId),
-  ]);
-  return sortByTimestamp(messages, 'createdAt', 'asc').slice(-count);
+  ], { orderBy: ['createdAt', 'asc'] });
+  return messages.slice(-count);
 }
 
 export async function sendMessage({ conversationId, senderId, text = '', type = 'text', mediaUrl = '', ...data }) {

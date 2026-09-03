@@ -1,7 +1,8 @@
 import { createDoc, getById, patchDoc, queryOnce, saveDoc } from './_base';
-import { where, orderBy, limit, arrayUnion, arrayRemove } from '../firebase/firestore';
+import { where } from '../firebase/firestore';
 import { COLLECTIONS } from '../utils/constants';
 import { serverTimestamp } from '../firebase/firestore';
+import { sortByTimestamp } from '../utils/format';
 
 const GROUPS = COLLECTIONS.GROUPS;
 const MEMBERS = COLLECTIONS.GROUP_MEMBERS;
@@ -75,11 +76,14 @@ export function getGroupMembers(groupId) {
   return queryOnce(MEMBERS, [where('groupId', '==', groupId), where('status', '==', 'active')]);
 }
 
-export function getGroupMessages(groupId, count = 200) {
-  return queryOnce(MESSAGES, [where('groupId', '==', groupId)], {
-    orderBy: ['createdAt', 'asc'],
-    limit: count,
-  });
+/**
+ * Same index-free approach as direct messages: fetch by group only, then sort
+ * locally and keep the newest `count` messages. A server-side orderBy next to
+ * the groupId filter would require a composite index.
+ */
+export async function getGroupMessages(groupId, count = 200) {
+  const messages = await queryOnce(MESSAGES, [where('groupId', '==', groupId)]);
+  return sortByTimestamp(messages, 'createdAt', 'asc').slice(-count);
 }
 
 export async function sendGroupMessage({ groupId, senderId, text = '', type = 'text', mediaUrl = '' }) {

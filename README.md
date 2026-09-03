@@ -100,6 +100,10 @@ npm run preview
   (`isAdmin()`).
 - Private data (orders, payments, conversations, messages, notifications) is only
   readable/writable by the owner, the relevant business/seller, or an admin.
+- Quotations, invoices and receipts are world-readable by design: they are shared
+  with customers (who may not have accounts) and carry the public verification
+  code used by the `/verify/:code` page. Writes stay restricted to the customer,
+  the owning business and admins.
 
 ---
 
@@ -133,35 +137,30 @@ photos remain unmodified.
 
 ---
 
-## Composite Firestore Indexes
+## Composite Firestore Indexes — not required
 
-A handful of pages combine a `where` filter with an `orderBy` sort. Firebase
-requires a matching **composite index** for those queries. Create them in the
-Firebase console (Firestore → Indexes) as prompted by the console, or add them to
-`firestore.indexes.json`. The key ones:
+Firestore only serves a `where` filter combined with an `orderBy` on a different
+field if a matching **composite index** exists for that collection/field pair.
+Missing indexes used to break the seller dashboard, groups, notifications and
+most list screens with a `failed-precondition` ("The query requires an index")
+error.
 
-- `businesses` — `ownerId ASC, createdAt DESC`
-- `businesses` — `category ASC, createdAt DESC` (where used)
-- `products` — `businessId ASC, createdAt DESC`
-- `products` — `category ASC, createdAt DESC`
-- `products` — `ownerId ASC, createdAt DESC`
-- `services` — `businessId ASC, createdAt DESC`
-- `services` — `category ASC, createdAt DESC`
-- `orders` — `buyerId ASC, createdAt DESC`
-- `orders` — `businessId ASC, createdAt DESC`
-- `payments` — `buyerId ASC, createdAt DESC`
-- `payments` — `businessId ASC, createdAt DESC`
-- `payments` — `status ASC, createdAt DESC`
-- `conversations` — `participantIds ARRAY_CONTAINS, lastMessageAt DESC`
-- `messages` — `conversationId ASC, createdAt ASC`
-- `quotations` / `invoices` / `receipts` — `businessId ASC, createdAt DESC`
-- `reviews` — `businessId ASC, createdAt DESC`
-- `notifications` — `recipientId ASC, createdAt DESC`
+The app now avoids composite indexes entirely. The shared query helpers in
+`src/services/_base.js` (`queryOnce`, `listAll`, `pageQuery`) apply this policy
+automatically:
 
-The home page's "featured" sections intentionally avoid compound queries so the
-site loads cleanly even before indexes are created. The direct Messages inbox and
-conversation view also use single-field filters and sort their small result sets
-in the client, so a missing conversations/messages index does not block chat.
+- **Unfiltered queries** keep `orderBy` + `limit` server-side — single-field
+  indexes are automatic in Firestore.
+- **Filtered queries** are sent with the `where` filters only, then ordered and
+  limited **client-side** (a `limit` without an `orderBy` stays server-side).
+- **Filtered pagination** (marketplace category filter) fetches the filtered set,
+  sorts locally and pages by numeric offset; unfiltered pagination keeps real
+  key-set (`startAfter`) pagination.
+
+No console index setup is needed — deploy and everything works. If you later
+prefer server-side ordering at scale, you can create composite indexes in the
+Firebase console (Firestore → Indexes) and the helpers will still work; they are
+an optimization boundary, not a correctness one.
 
 ---
 
