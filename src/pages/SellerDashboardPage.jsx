@@ -5,8 +5,10 @@ import { useToast } from '../contexts/ToastContext';
 import useAsync from '../hooks/useAsync';
 import Button from '../components/Button';
 import Spinner from '../components/Spinner';
+import StatusBadge from '../components/StatusBadge';
 import { EmptyState, ErrorState } from '../components/PageState';
 import { getBusinessesByOwner } from '../services/businessService';
+import { getOrdersByBusiness, getOrdersByOwner } from '../services/orderService';
 import {
   getProductsByBusiness,
   createProduct,
@@ -24,7 +26,7 @@ import {
 } from '../services/inventoryService';
 import { uploadImageToCloudinary } from '../cloudinary/upload';
 import { BUSINESS_CATEGORIES } from '../utils/constants';
-import { formatCurrency, formatNumber } from '../utils/format';
+import { formatCurrency, formatNumber, relativeTime } from '../utils/format';
 import {
   parseCsv,
   readFileAsText,
@@ -38,6 +40,7 @@ import {
 
 const TABS = [
   { id: 'channels', label: 'Where you sell' },
+  { id: 'orders', label: 'Orders' },
   { id: 'products', label: 'Products' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'import', label: 'Bulk import (CSV)' },
@@ -201,6 +204,7 @@ export default function SellerDashboardPage() {
       </div>
 
       {tab === 'channels' && <ChannelsTab business={business} stats={stats} />}
+      {tab === 'orders' && <OrdersTab user={user} business={business} />}
       {tab === 'products' && (
         <ProductsTab
           user={user}
@@ -238,6 +242,72 @@ function StatCard({ label, value, hint }) {
       <span className="stat-card__label">{label}</span>
       <strong className="stat-card__value">{value}</strong>
       {hint && <span className="stat-card__hint">{hint}</span>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ orders */
+
+function OrdersTab({ user, business }) {
+  const businessOrders = useAsync(
+    () => (business?.id ? getOrdersByBusiness(business.id, 100) : Promise.resolve([])),
+    [business?.id]
+  );
+  const ownerOrders = useAsync(
+    () => (user?.uid ? getOrdersByOwner(user.uid, 100) : Promise.resolve([])),
+    [user?.uid]
+  );
+
+  if (!business) return null;
+
+  const loading = businessOrders.loading || ownerOrders.loading;
+  const error = businessOrders.error || ownerOrders.error;
+  const combined = [
+    ...(businessOrders.data || []),
+    ...(ownerOrders.data || []).filter(
+      (order) => order.businessId !== business?.id && order.ownerId === user?.uid
+    ),
+  ].filter((order, index, all) => all.findIndex((item) => item.id === order.id) === index);
+
+  if (loading) return <Spinner size="large" />;
+  if (error) return <ErrorState message={error} onRetry={() => { businessOrders.retry(); ownerOrders.retry(); }} />;
+  if (!combined.length) {
+    return (
+      <div className="panel">
+        <EmptyState title="No orders yet" message="Orders and service requests from this store will appear here." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="panel mt-16">
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Buyer</th>
+              <th>Total</th>
+              <th>Payment</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {combined.map((order) => (
+              <tr key={order.id}>
+                <td><Link to={`/order/${order.id}`} className="table__link">{order.orderNumber}</Link></td>
+                <td>{order.buyerName || '—'}</td>
+                <td>{formatCurrency(order.total)}</td>
+                <td><StatusBadge status={order.paymentStatus} /></td>
+                <td><StatusBadge status={order.status} /></td>
+                <td>{relativeTime(order.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-muted mt-16">Showing {combined.length} order(s).</p>
     </div>
   );
 }

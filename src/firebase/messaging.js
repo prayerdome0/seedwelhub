@@ -61,15 +61,20 @@ export async function getFirebaseMessagingToken() {
 }
 
 export function subscribeToForegroundMessages(handler) {
-  const messaging = getMessagingInstance();
-  // Resolve lazily; onMessage needs a ready instance.
-  messaging
+  // Resolve lazily; onMessage needs a ready instance. The returned function
+  // cancels the pending setup and unsubscribes as soon as it becomes available.
+  let unsubscribe = () => {};
+  let cancelled = false;
+  getMessagingInstance()
     .then((instance) => {
-      if (!instance) return () => {};
-      return onMessage(instance, handler);
+      if (cancelled || !instance) return;
+      unsubscribe = onMessage(instance, handler);
     })
     .catch(() => {});
-  return () => {};
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
 }
 
 export function friendlyNotificationError() {

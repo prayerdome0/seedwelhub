@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import Spinner from '../components/Spinner';
+import Button from '../components/Button';
 import { EmptyState, ErrorState } from '../components/PageState';
 import { relativeTime } from '../utils/format';
 
@@ -28,7 +29,7 @@ function relatedRoute(n) {
 
 export default function NotificationsPage() {
   const { user } = useAuth();
-  const { notifications, loading, markRead } = useNotifications();
+  const { notifications, loading, unreadCount, markRead, markAllRead } = useNotifications();
   const [filter, setFilter] = useState('all');
 
   const filtered = useMemo(() => {
@@ -55,6 +56,13 @@ export default function NotificationsPage() {
       <div className="page__header">
         <h1 className="page__title">Notifications</h1>
         <p className="page__subtitle">Updates on messages, orders, payments and security.</p>
+        {!loading && unreadCount > 0 && (
+          <div className="mt-8">
+            <Button variant="outline" size="sm" onClick={() => markAllRead()}>
+              Mark all as read
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="tabs">

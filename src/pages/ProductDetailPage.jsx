@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Image from '../components/Image';
 import Spinner from '../components/Spinner';
 import { NotFoundState, ErrorState, LoadingState } from '../components/PageState';
 import StarRating from '../components/StarRating';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
+import CheckoutForm from '../components/CheckoutForm';
 import useDocument from '../hooks/useDocument';
 import useStartConversation from '../hooks/useStartConversation';
 import { getProduct } from '../services/productService';
+import { placeOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { formatCurrency } from '../utils/format';
@@ -18,9 +20,12 @@ export default function ProductDetailPage() {
   const { data: product, loading, error, notFound, retry } = useDocument(getProduct, id, []);
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
-  const { user } = useAuth();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const { user, profile } = useAuth();
   const { showToast } = useToast();
   const { start: startConversation, starting: startingConversation } = useStartConversation();
+  const navigate = useNavigate();
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={retry} />;
@@ -46,8 +51,46 @@ export default function ProductDetailPage() {
       showToast('Please log in to place an order.', 'info');
       return;
     }
-    showToast('Order feature is being set up. You can contact the seller.', 'info');
-    // Where real ordering is implemented, this navigates to a checkout / order flow.
+    if (!available) {
+      showToast('This product is out of stock.', 'error');
+      return;
+    }
+    setCheckoutOpen((open) => !open);
+  };
+
+  const handlePlaceOrder = async ({ name, phone, address, paymentMethod, note }) => {
+    setPlacing(true);
+    try {
+      const order = await placeOrder({
+        buyerId: user.uid,
+        buyerName: name,
+        buyerPhone: phone,
+        businessId: product.businessId || null,
+        businessName: sellerName || 'Seller',
+        ownerId: product.ownerId,
+        items: [
+          {
+            type: 'product',
+            productId: product.id,
+            sku: product.sku,
+            name: product.name,
+            price: Number(product.price) || 0,
+            quantity: qty,
+            unit: product.unit,
+            image: currentImage || product.image || '',
+          },
+        ],
+        address,
+        paymentMethod,
+        note,
+      });
+      showToast(`Order ${order.orderNumber} placed successfully.`, 'success');
+      navigate(`/order/${order.id}`);
+    } catch (err) {
+      showToast(err.message || 'Could not place the order. Please try again.', 'error');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   const handleMessageSeller = () => {
@@ -163,6 +206,17 @@ export default function ProductDetailPage() {
                 <Button variant="primary" className="btn--block" onClick={handleBuy}>
                   Place Order
                 </Button>
+                {checkoutOpen && (
+                  <CheckoutForm
+                    buyer={profile}
+                    summary={`${qty} × ${product.name}`}
+                    total={(Number(product.price) || 0) * qty}
+                    submitting={placing}
+                    submitLabel="Place Order"
+                    onCancel={() => setCheckoutOpen(false)}
+                    onSubmit={handlePlaceOrder}
+                  />
+                )}
               </div>
 
               {product.ownerId && (

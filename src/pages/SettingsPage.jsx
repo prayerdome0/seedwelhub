@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Spinner from '../components/Spinner';
@@ -6,8 +6,11 @@ import Button from '../components/Button';
 import { updateProfile } from '../services/userService';
 import { sendPasswordReset, isEmailVerified, sendVerificationEmail, logout } from '../firebase/auth';
 import { getFirebaseMessagingToken, requestNotificationPermission } from '../firebase/messaging';
-import { saveDoc } from '../services/_base';
-import { COLLECTIONS } from '../utils/constants';
+import {
+  getDeviceTokensForUser,
+  saveDeviceToken,
+  deleteDeviceTokensForUser,
+} from '../services/deviceTokenService';
 
 const TABS = [
   { id: 'account', label: 'Account' },
@@ -28,6 +31,34 @@ export default function SettingsPage() {
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushLoading, setPushLoading] = useState(true);
+
+  // Load the current push-notification state so the Setting screen reflects
+  // what was previously enabled (stored token + granted browser permission).
+  useEffect(() => {
+    let active = true;
+    if (!user || typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+      setPushEnabled(false);
+      setPushLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+    getDeviceTokensForUser(user.uid, 1)
+      .then((tokens) => {
+        if (active) setPushEnabled((tokens || []).some((token) => token.active !== false));
+      })
+      .catch(() => {
+        if (active) setPushEnabled(false);
+      })
+      .finally(() => {
+        if (active) setPushLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   if (loading || !profile) {
     return <div className="container page"><Spinner size="large" /></div>;
@@ -65,27 +96,56 @@ export default function SettingsPage() {
   };
 
   const handleEnablePush = async () => {
-    const perm = await requestNotificationPermission();
-    if (!perm.ok) {
-      showToast('Notifications are not available in your browser.', 'error');
-      return;
-    }
-    const tokenResult = await getFirebaseMessagingToken();
-    if (tokenResult.ok) {
+    setPushBusy(true);
+    try {
+      const perm = await requestNotificationPermission();
+      if (!perm.ok) {
+        showToast(
+          perm.reason === 'unsupported'
+            ? 'This browser does not support web push notifications.'
+            : 'Push notifications are blocked. Allow notifications from your browser settings.',
+          'error'
+        );
+        return;
+      }
+
+      const tokenResult = await getFirebaseMessagingToken();
+      if (!tokenResult.ok) {
+        if (tokenResult.reason === 'no-vapid-key') {
+          showToast(
+            'Push notifications need the public FCM VAPID key. Set VITE_FIREBASE_VAPID_PUBLIC_KEY in your environment.',
+            'info'
+          );
+        } else {
+          showToast('Push notifications could not be set up in this environment.', 'info');
+        }
+        return;
+      }
+
       // Guard against writing when push token flow is unavailable; VAPID key may
       // not be set in this environment.
       try {
-        await saveDoc(COLLECTIONS.DEVICE_TOKENS, `${user.uid}_${Date.now()}`, {
-          uid: user.uid,
-          token: tokenResult.token,
-        });
+        await saveDeviceToken(user.uid, tokenResult.token);
         setPushEnabled(true);
         showToast('Push notifications enabled.', 'success');
       } catch (err) {
         showToast('Could not save your notification token.', 'error');
       }
-    } else {
-      showToast('Push notifications could not be set up in this environment.', 'info');
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setPushBusy(true);
+    try {
+      await deleteDeviceTokensForUser(user.uid);
+      setPushEnabled(false);
+      showToast('Push notifications disabled on this device.', 'success');
+    } catch (err) {
+      showToast('Could not disable push notifications.', 'error');
+    } finally {
+      setPushBusy(false);
     }
   };
 
@@ -168,9 +228,29 @@ export default function SettingsPage() {
         <div className="panel">
           <h2 className="panel__title">Notifications</h2>
           <p className="text-muted">Enable push notifications to get updates on messages, orders and more.</p>
-          <Button variant="primary" onClick={handleEnablePush}>
-            {pushEnabled ? 'Push Notifications Enabled ✓' : 'Enable Push Notifications'}
-          </Button>
+          <div className="mt-16">
+            <Button
+              variant="primary"
+              loading={pushLoading || pushBusy}
+              onClick={pushEnabled ? handleDisablePush : handleEnablePush}
+            >
+              {pushLoading
+                ? 'Checking notification status…'
+                : pushEnabled
+                  ? 'Disable Push Notifications'
+                  : 'Enable Push Notifications'}
+            </Button>
+          </div>
+          {pushEnabled && (
+            <p className="form__msg form__msg--success mt-16">
+              ✓ Push notifications are enabled for this device.
+            </p>
+          )}
+          {!pushEnabled && !pushLoading && (
+            <p className="form__msg form__msg--info mt-16">
+              In-app notifications are always on. Push adds alerts when the page is not in focus.
+            </p>
+          )}
         </div>
       )}
 
