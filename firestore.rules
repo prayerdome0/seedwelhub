@@ -1,0 +1,313 @@
+rules_version = '2';
+
+// Seedwel Hub — Cloud Firestore security rules.
+//
+// Frontend-only checks are NEVER security. These rules are the enforcement
+// layer: they prevent ordinary users from promoting themselves to admin,
+// reading private data, or modifying other people's / businesses' data.
+
+// Helper: is the caller signed in?
+function signedIn() {
+  return request.auth != null;
+}
+
+// Helper: is the caller this document's owner?
+function isOwner(uid) {
+  return signedIn() && request.auth.uid == uid;
+}
+
+// Returns the role of a user from the users collection (if readable).
+function userRole(uid) {
+  return get(/databases/$(database)/documents/users/$(uid)).data.role;
+}
+
+// Is the caller an admin?
+function isAdmin() {
+  return signedIn() && userRole(request.auth.uid) == 'admin';
+}
+
+// Normal users can never be admins. This function also guards writes so only
+// admins can set role = 'admin'.
+function canWriteRole() {
+  return isAdmin();
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      // Writes to role/accountStatus are admin-only. Users may update their own
+      // non-sensitive fields but can never set role.
+      allow update: if (isOwner(uid) && !request.resource.data.role.diff(resource.data.role).affectedKeys().hasAny(['role', 'accountStatus']))
+                 || (isAdmin() && request.resource.data.role == resource.data.role)
+                 || (isAdmin() && request.resource.data.role in ['admin', 'user']);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- profiles ----------
+    match /profiles/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- businesses ----------
+    match /businesses/{businessId} {
+      allow read: if true; // business profiles are public
+      allow create: if signedIn();
+      allow update: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- business members ----------
+    match /businessMembers/{memberId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if (resource.data.uid == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- products ----------
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update: if (signedIn() && (resource.data.ownerId == request.auth.uid || resource.data.businessId != null)) || isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    // ---------- services ----------
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    // ---------- categories ----------
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---------- orders ----------
+    match /orders/{orderId} {
+      allow read: if signedIn() && (request.auth.uid == resource.data.buyerId || isAdmin());
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+
+    // ---------- order items ----------
+    match /orderItems/{itemId} {
+      allow read: if signedIn() && (request.auth.uid == resource.data.buyerId || isAdmin());
+      allow create: if signedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- payments ----------
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId));
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == resource.data.sellerId);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- payment methods / proofs / disputes ----------
+    match /paymentMethods/{id} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.businessId != null);
+    }
+    match /paymentProofs/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == resource.data.buyerId);
+    }
+    match /paymentDisputes/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- quotations / invoices / receipts ----------
+    match /quotations/{id} {
+      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.businessId || request.auth.uid == resource.data.customerId));
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /invoices/{id} {
+      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.businessId || request.auth.uid == resource.data.customerId));
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /receipts/{id} {
+      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.businessId || request.auth.uid == resource.data.customerId));
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- conversations / messages (private) ----------
+    match /conversations/{id} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if signedIn();
+      allow update: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow delete: if isAdmin();
+    }
+    match /messages/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid in resource.data.readBy);
+      allow delete: if isAdmin() || (signedIn() && request.auth.uid == resource.data.senderId);
+    }
+
+    // ---------- groups / group members ----------
+    match /groups/{id} {
+      allow read: if resource.data.visibility == 'public' || isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /groupMembers/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- notifications ----------
+    match /notifications/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
+      allow create: if isAdmin() || signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- device tokens ----------
+    match /deviceTokens/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // ---------- reviews / wishlists / follows ----------
+    match /reviews/{id} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.authorId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /wishlists/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+    match /follows/{id} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow delete: if isAdmin() || (signedIn() && resource.data.followerId == request.auth.uid);
+    }
+
+    // ---------- documents (verification) ----------
+    match /documents/{id} {
+      allow read: if true;
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- admin-only collections ----------
+    match /auditLogs/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    match /securityEvents/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    match /adminActions/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    match /reports/{id} {
+      allow read: if isAdmin();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+    match /subscriptions/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /supportTickets/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- inventory / warehouses (sellers) ----------
+    match /inventory/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.businessId != null);
+      allow delete: if isAdmin();
+    }
+    match /inventoryMovements/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+    match /warehouses/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- product variants / customers / stores ----------
+    match /productVariants/{id} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.businessId != null);
+    }
+    match /customers/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.businessId != null);
+      allow delete: if isAdmin();
+    }
+    match /stores/{id} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && resource.data.businessId != null);
+      allow delete: if isAdmin();
+    }
+    match /quotationItems/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+    match /invoiceItems/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+    match /deviceSessions/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+  }
+}
