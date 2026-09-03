@@ -1,4 +1,4 @@
-import { createDoc, getById, patchDoc, queryOnce, pageQuery } from './_base';
+import { createDoc, getById, patchDoc, removeDoc, queryOnce, pageQuery } from './_base';
 import { where, orderBy, limit } from '../firebase/firestore';
 import { COLLECTIONS } from '../utils/constants';
 
@@ -83,4 +83,25 @@ export function searchProducts(term) {
           })
         : all
   );
+}
+
+export function deleteProduct(id) {
+  return removeDoc(COL, id);
+}
+
+// Bulk create for the CSV importer. Rows are saved one at a time so one bad
+// row cannot abort the whole import; failures come back with their line number.
+export async function bulkCreateProducts(ownerId, businessId, businessName, rows) {
+  const results = { created: 0, failed: [] };
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await createProduct(ownerId, { ...row, businessId, businessName });
+      results.created += 1;
+    } catch (err) {
+      results.failed.push({ row: i + 2, message: err.message || 'Could not save this row.' });
+    }
+  }
+  return results;
 }

@@ -23,6 +23,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import SettingsPage from './pages/SettingsPage';
 import SellerOnboardingPage from './pages/SellerOnboardingPage';
+import SellerDashboardPage from './pages/SellerDashboardPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
@@ -117,6 +118,8 @@ export default function App() {
             {/* Authenticated */}
             <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
             <Route path="/sell" element={<RequireAuth><SellerOnboardingPage /></RequireAuth>} />
+            <Route path="/seller" element={<RequireAuth><SellerDashboardPage /></RequireAuth>} />
+            <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
             <Route path="/orders" element={<RequireAuth><OrdersPage /></RequireAuth>} />
             <Route path="/order/:id" element={<RequireAuth><OrderDetailPage /></RequireAuth>} />

@@ -243,6 +243,19 @@ export default function SellerOnboardingPage() {
         </p>
       </div>
 
+      {!myBusinesses.loading && myBusinesses.data?.length > 0 && (
+        <div className="panel dash-toolbar">
+          <div>
+            <h2 className="panel__title">Manage your selling</h2>
+            <p className="text-muted">
+              See where you can sell, edit listings, track stock and bulk-import products or
+              inventory from a CSV file.
+            </p>
+          </div>
+          <Link to="/seller" className="btn btn--primary">Open seller dashboard</Link>
+        </div>
+      )}
+
       {myBusinesses.loading && <Spinner size="sm" />}
 
       {/* Existing businesses */}
