@@ -1,0 +1,50 @@
+import {
+  getFirestore,
+  collection,
+  doc,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit as firestoreLimit,
+  startAfter,
+  serverTimestamp,
+  onSnapshot,
+  increment,
+  arrayUnion,
+  arrayRemove,
+  writeBatch,
+  Timestamp,
+} from 'firebase/firestore';
+import { app } from './config';
+
+// Single shared Firestore instance.
+export const db = getFirestore(app);
+
+export {
+  collection,
+  doc,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  firestoreLimit as limit,
+  startAfter,
+  serverTimestamp,
+  onSnapshot,
+  increment,
+  arrayUnion,
+  arrayRemove,
+  writeBatch,
+  Timestamp,
+};
