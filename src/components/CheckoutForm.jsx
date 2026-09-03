@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Button from './Button';
+import AcceptedMethods from './payments/AcceptedMethods';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { formatCurrency } from '../utils/format';
 
@@ -8,6 +9,7 @@ import { formatCurrency } from '../utils/format';
 // responsible for creating the order and navigating to the result.
 export default function CheckoutForm({
   buyer,
+  businessId = null,
   summary = '',
   total = 0,
   deliveryFee = 0,
@@ -109,6 +111,8 @@ export default function CheckoutForm({
           placeholder="Anything the seller should know"
         />
       </div>
+
+      {businessId && <AcceptedMethods businessId={businessId} />}
 
       {summary && <p className="form__msg form__msg--info">{summary}</p>}
       <div className="form__msg form__msg--info">

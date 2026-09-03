@@ -1,102 +1,94 @@
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { REAL_LOGO } from '../assets';
 import { useAuth } from '../contexts/AuthContext';
-import { useNotifications } from '../contexts/NotificationContext';
 import SearchBar from '../components/SearchBar';
 import Avatar from '../components/Avatar';
-import { logout } from '../firebase/auth';
+import MainMenuDrawer from '../components/navigation/MainMenuDrawer';
+import AccountMenuDrawer from '../components/navigation/AccountMenuDrawer';
+import NotificationBell from '../components/navigation/NotificationBell';
+import { APP_NAME } from '../utils/constants';
 
-const NAV_LINKS = [
-  { to: '/', label: 'Home' },
-  { to: '/marketplace', label: 'Marketplace' },
-  { to: '/services', label: 'Services' },
-  { to: '/businesses', label: 'Businesses' },
-  { to: '/sell', label: 'Sell' },
-];
-
+// ---------------------------------------------------------------------------
+// The application header, identical on every screen:
+//
+//     ☰ Menu  |  Seedwel Hub  |  🔔 Notifications  |  Account
+//
+// All navigation now lives in the drawers, which keeps the bar itself clean
+// and consistent at every breakpoint. The desktop search stays in the header
+// because it is a primary marketplace action, not navigation.
+// ---------------------------------------------------------------------------
 export default function Header() {
-  const { user, profile, isAdmin } = useAuth();
-  const { unreadCount } = useNotifications();
+  const { user, profile } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const navigate = useNavigate();
 
-  const closeMenu = () => setMenuOpen(false);
-
-  const handleLogout = async () => {
-    await logout().catch(() => {});
-    closeMenu();
-    navigate('/');
-  };
-
   return (
-    <header className="site-header">
-      <div className="site-header__inner container">
-        <Link to="/" className="site-header__brand" onClick={closeMenu}>
-          <img loading="lazy" decoding="async" src={REAL_LOGO} alt="Seedwel Hub" className="site-header__logo" />
-          <span className="site-header__wordmark">Seedwel Hub</span>
-        </Link>
+    <>
+      <header className="site-header">
+        <div className="site-header__inner container">
+          <button
+            type="button"
+            className="header-icon-btn header-icon-btn--menu"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open main menu"
+            aria-expanded={menuOpen}
+          >
+            <span className="header-burger" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
 
-        <div className="site-header__search">
-          <SearchBar variant="header" />
-        </div>
+          <Link to="/" className="site-header__brand">
+            <img
+              src={REAL_LOGO}
+              alt=""
+              className="site-header__logo"
+              width="36"
+              height="36"
+              decoding="async"
+            />
+            <span className="site-header__wordmark">{APP_NAME}</span>
+          </Link>
 
-        <button
-          type="button"
-          className={`site-header__toggle ${menuOpen ? 'is-open' : ''}`}
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Toggle menu"
-          aria-expanded={menuOpen}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
+          <div className="site-header__search">
+            <SearchBar variant="header" />
+          </div>
 
-        <nav className={`site-nav ${menuOpen ? 'is-open' : ''}`}>
-          {NAV_LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to} className="site-nav__link" onClick={closeMenu}>
-              {link.label}
-            </NavLink>
-          ))}
-
-          {/* Admin tab — only rendered for users whose Firestore role is 'admin'.
-              AuthContext watches the users document in realtime, so assigning
-              the role in Firestore shows this immediately. */}
-          {isAdmin && (
-            <NavLink to="/admin" className="site-nav__link site-nav__link--admin" onClick={closeMenu}>
-              Admin
-            </NavLink>
-          )}
-
-          {user ? (
-            <div className="site-nav__account">
-              <Link to="/notifications" className="site-nav__icon-link" onClick={closeMenu} aria-label="Notifications">
-                🔔
-                {unreadCount > 0 && <span className="site-nav__badge">{unreadCount}</span>}
-              </Link>
-              <div className="profile-menu">
-                <button type="button" className="profile-menu__trigger" onClick={() => navigate('/profile')}>
-                  <Avatar src={profile?.photoURL} name={profile?.name || user.email} size="sm" />
-                  <span className="profile-menu__name">{profile?.name || user.email}</span>
+          <div className="site-header__actions">
+            {user ? (
+              <>
+                <NotificationBell />
+                <button
+                  type="button"
+                  className="header-account-btn"
+                  onClick={() => setAccountOpen(true)}
+                  aria-label="Open account menu"
+                  aria-expanded={accountOpen}
+                >
+                  <Avatar
+                    src={profile?.photoURL}
+                    name={profile?.name || user.email}
+                    size="sm"
+                  />
+                  <span className="header-account-btn__label">Account</span>
                 </button>
-                <div className="profile-menu__dropdown">
-                  <Link to="/profile" className="dropdown-link" onClick={closeMenu}>My Profile</Link>
-                  <Link to="/seller" className="dropdown-link" onClick={closeMenu}>Seller Dashboard</Link>
-                  {isAdmin && <Link to="/admin" className="dropdown-link" onClick={closeMenu}>Admin</Link>}
-                  <Link to="/settings" className="dropdown-link" onClick={closeMenu}>Settings</Link>
-                  <button type="button" className="dropdown-link" onClick={handleLogout}>Log Out</button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="site-nav__auth">
-              <Link to="/login" className="btn btn--ghost" onClick={closeMenu}>Log In</Link>
-              <Link to="/register" className="btn btn--primary" onClick={closeMenu}>Sign Up</Link>
-            </div>
-          )}
-        </nav>
-      </div>
-    </header>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn--ghost btn--sm header-auth-btn">Log In</Link>
+                <Link to="/register" className="btn btn--primary btn--sm">Sign Up</Link>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <MainMenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <AccountMenuDrawer open={accountOpen} onClose={() => setAccountOpen(false)} />
+    </>
   );
 }

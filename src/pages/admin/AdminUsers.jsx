@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Spinner from '../../components/Spinner';
 import StatusBadge from '../../components/StatusBadge';
 import { EmptyState, ErrorState } from '../../components/PageState';
@@ -34,12 +35,20 @@ export default function AdminUsers() {
           <tbody>
             {data.map((u) => (
               <tr key={u.id}>
-                <td>{u.name || '—'}</td>
+                <td>
+                  <Link to={`/admin/users/${u.uid || u.id}`} className="table__link">
+                    {u.name || 'Unnamed user'}
+                  </Link>
+                </td>
                 <td>{u.email}</td>
                 <td><StatusBadge status={u.role} /></td>
                 <td><StatusBadge status={u.accountStatus} /></td>
                 <td>{relativeTime(u.createdAt)}</td>
                 <td>
+                  <Link to={`/admin/users/${u.uid || u.id}`} className="btn btn--sm btn--ghost">
+                    Dossier
+                  </Link>
+                  {' '}
                   {u.accountStatus === 'suspended' ? (
                     <button type="button" className="btn btn--sm btn--outline" onClick={() => handleActivate(u.uid)}>Activate</button>
                   ) : (

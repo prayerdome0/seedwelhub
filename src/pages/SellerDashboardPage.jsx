@@ -16,16 +16,26 @@ import {
 } from '../services/orderService';
 import {
   getQuotationsByBusiness,
+  getQuotationsByOwner,
   createQuotation,
   updateQuotation,
+  respondToQuotationRequest,
+  sendQuotation,
 } from '../services/quotationService';
 import {
   getInvoicesByBusiness,
   createInvoice,
   updateInvoice,
   calculateInvoiceTotal,
+  createInvoiceFromOrder,
+  sendInvoice,
 } from '../services/invoiceService';
-import { getReceiptsByBusiness, createReceipt } from '../services/receiptService';
+import {
+  getReceiptsByBusiness,
+  createReceipt,
+  generateReceiptForOrder,
+} from '../services/receiptService';
+import { getProofsByBusiness } from '../services/paymentProofService';
 import { createNotification } from '../services/notificationService';
 import {
   getProductsByBusiness,
@@ -44,6 +54,9 @@ import {
   isLowStock,
 } from '../services/inventoryService';
 import { getServicesByBusiness, updateService } from '../services/serviceService';
+import PaymentSettingsTab from './seller/PaymentSettingsTab';
+import PaymentsTab from './seller/PaymentsTab';
+import CustomersTab from './seller/CustomersTab';
 import { uploadImageToCloudinary } from '../cloudinary/upload';
 import {
   BUSINESS_CATEGORIES,
@@ -54,7 +67,12 @@ import {
   ORDER_STATUS_FLOW,
   PAYMENT_METHODS,
   PAYMENT_STATUS,
+  QUOTATION_STATUS,
+  QUOTATION_STATUS_LABELS,
+  INVOICE_STATUS,
+  INVOICE_STATUS_LABELS,
 } from '../utils/constants';
+import { normalizeInvoiceStatus } from '../documents/model';
 import { formatCurrency, formatDate, formatNumber, relativeTime, slugify } from '../utils/format';
 import {
   parseCsv,
@@ -73,10 +91,13 @@ const TABS = [
   { id: 'quotations', label: 'Quotations' },
   { id: 'invoices', label: 'Invoices' },
   { id: 'receipts', label: 'Receipts' },
+  { id: 'payments', label: 'Payments' },
+  { id: 'customers', label: 'Customers' },
   { id: 'products', label: 'Products' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'import', label: 'Bulk import (CSV)' },
   { id: 'currency', label: 'Currency' },
+  { id: 'payment-settings', label: 'Payment details' },
 ];
 
 const QUOTATION_STATUSES = ['draft', 'sent', 'accepted', 'declined', 'invoiced'];
@@ -356,9 +377,12 @@ export default function SellerDashboardPage() {
 
       {tab === 'channels' && <ChannelsTab business={business} stats={stats} />}
       {tab === 'orders' && <OrdersTab user={user} business={business} />}
-      {tab === 'quotations' && <QuotationsTab business={business} />}
+      {tab === 'quotations' && <QuotationsTab business={business} user={user} />}
       {tab === 'invoices' && <InvoicesTab business={business} />}
       {tab === 'receipts' && <ReceiptsTab business={business} />}
+      {tab === 'payments' && <PaymentsTab business={business} />}
+      {tab === 'customers' && <CustomersTab business={business} />}
+      {tab === 'payment-settings' && <PaymentSettingsTab user={user} business={business} />}
       {tab === 'products' && (
         <ProductsTab
           user={user}
@@ -571,6 +595,7 @@ function StatCard({ label, value, hint }) {
 
 function OrdersTab({ user, business }) {
   const { showToast } = useToast();
+  const [invoicing, setInvoicing] = useState('');
   const businessOrders = useAsync(
     () => (business?.id ? getOrdersByBusiness(business.id, 100) : Promise.resolve([])),
     [business?.id]
@@ -631,6 +656,24 @@ function OrdersTab({ user, business }) {
   const updatePayment = async (order, paymentStatus) => {
     try {
       await updateOrderPaymentStatus(order.id, paymentStatus);
+
+      // Confirming payment here must produce the same result as confirming a
+      // payment proof: the buyer gets an automatically generated receipt.
+      if (paymentStatus === PAYMENT_STATUS.CONFIRMED) {
+        const receipt = await generateReceiptForOrder(
+          { ...order, paymentStatus },
+          { business }
+        ).catch(() => null);
+        refresh();
+        showToast(
+          receipt
+            ? `Payment confirmed. Receipt ${receipt.receiptNumber} issued.`
+            : `${order.orderNumber} payment → ${paymentStatus}.`,
+          'success'
+        );
+        return;
+      }
+
       refresh();
       showToast(`${order.orderNumber} payment → ${paymentStatus}.`, 'success');
       notifyBuyer(
@@ -640,6 +683,29 @@ function OrdersTab({ user, business }) {
       );
     } catch (err) {
       showToast(err.message || 'Could not update the payment status.', 'error');
+    }
+  };
+
+  // Raise a draft invoice from an unpaid order, then send it for review.
+  const raiseInvoice = async (order) => {
+    setInvoicing(order.id);
+    try {
+      const draft = await createInvoiceFromOrder(order, { business });
+      await sendInvoice(
+        {
+          ...draft,
+          businessName: business.name,
+          customerId: order.buyerId,
+          currency: order.currency,
+        },
+        {}
+      );
+      showToast(`Invoice ${draft.invoiceNumber} sent to ${order.buyerName || 'the buyer'}.`, 'success');
+      refresh();
+    } catch (err) {
+      showToast(err.message || 'Could not create the invoice.', 'error');
+    } finally {
+      setInvoicing('');
     }
   };
 
@@ -665,6 +731,7 @@ function OrdersTab({ user, business }) {
               <th>Payment</th>
               <th>Status</th>
               <th>Date</th>
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -706,13 +773,31 @@ function OrdersTab({ user, business }) {
                   )}
                 </td>
                 <td>{relativeTime(order.createdAt)}</td>
+                <td>
+                  <div className="row-actions">
+                    {canManage(order) && order.paymentStatus !== PAYMENT_STATUS.CONFIRMED && (
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        disabled={invoicing === order.id}
+                        onClick={() => raiseInvoice(order)}
+                      >
+                        {invoicing === order.id ? 'Sending…' : 'Send invoice'}
+                      </button>
+                    )}
+                    <Link to={`/order/${order.id}`} className="btn btn--ghost btn--sm">
+                      Review
+                    </Link>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <p className="text-muted mt-16">
-        Showing {combined.length} order(s). Use the dropdowns to update an order's status and payment.
+        Showing {combined.length} order(s). Use the dropdowns to update status and payment, or
+        send an invoice for an unpaid order. Confirming a payment issues the buyer's receipt.
       </p>
     </div>
   );
@@ -822,19 +907,33 @@ function LineItemsEditor({ items, onChange, currency, mode = 'quotation' }) {
 
 /* --------------------------------------------------------------- quotations */
 
-function QuotationsTab({ business }) {
+function QuotationsTab({ business, user }) {
   const { showToast } = useToast();
   const quotations = useAsync(
     () => (business?.id ? getQuotationsByBusiness(business.id) : Promise.resolve([])),
     [business?.id]
   );
+  // Requests can arrive addressed to the seller directly (ownerId) as well as
+  // to the business, so both sources are merged for the request queue.
+  const ownerQuotations = useAsync(
+    () => (user?.uid ? getQuotationsByOwner(user.uid) : Promise.resolve([])),
+    [user?.uid]
+  );
+  const [responding, setResponding] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => emptyQuotation(business?.currency));
 
   if (!business) return null;
 
-  const list = quotations.data || [];
+  const merged = [
+    ...(quotations.data || []),
+    ...(ownerQuotations.data || []),
+  ].filter((q, index, all) => all.findIndex((item) => item.id === q.id) === index);
+
+  // Incoming buyer requests that still need a decision from the seller.
+  const requests = merged.filter((q) => q.status === QUOTATION_STATUS.REQUESTED);
+  const list = merged.filter((q) => q.status !== QUOTATION_STATUS.REQUESTED);
   const items = form.items || [];
   const total = items.reduce((sum, it) => sum + num(it.unitPrice) * num(it.quantity), 0);
 
@@ -888,13 +987,47 @@ function QuotationsTab({ business }) {
     }
   };
 
+  const refreshAll = () => {
+    quotations.retry();
+    ownerQuotations.retry();
+  };
+
   const setStatus = async (q, status) => {
     try {
       await updateQuotation(q.id, { status });
       showToast(`${q.quotationNumber} → ${status}.`, 'success');
-      quotations.retry();
+      refreshAll();
     } catch (err) {
       showToast(err.message || 'Could not update the quotation.', 'error');
+    }
+  };
+
+  // Triage an incoming request: accept it for quoting, ask the buyer for more
+  // detail, or decline. Each option notifies the buyer.
+  const respondToRequest = async (quotation, action) => {
+    setResponding(`${quotation.id}-${action}`);
+    try {
+      await respondToQuotationRequest(quotation, action);
+      showToast('Response sent to the buyer.', 'success');
+      refreshAll();
+    } catch (err) {
+      showToast(err.message || 'Could not send your response.', 'error');
+    } finally {
+      setResponding('');
+    }
+  };
+
+  // Send a prepared quotation to the buyer.
+  const dispatchQuotation = async (quotation) => {
+    setResponding(`${quotation.id}-send`);
+    try {
+      await sendQuotation(quotation, {});
+      showToast(`Quotation ${quotation.quotationNumber} sent.`, 'success');
+      refreshAll();
+    } catch (err) {
+      showToast(err.message || 'Could not send the quotation.', 'error');
+    } finally {
+      setResponding('');
     }
   };
 
@@ -933,6 +1066,79 @@ function QuotationsTab({ business }) {
 
   return (
     <>
+      {/* Incoming buyer requests need a decision before anything else. */}
+      {requests.length > 0 && (
+        <div className="panel mt-16">
+          <h2 className="panel__title">
+            🔔 New quotation requests ({requests.length})
+          </h2>
+          <div className="request-list">
+            {requests.map((request) => {
+              const brief = request.request || {};
+              return (
+                <article key={request.id} className="request-card">
+                  <header className="request-card__head">
+                    <div>
+                      <Link to={`/quotation/${request.id}`} className="request-card__number">
+                        {request.quotationNumber}
+                      </Link>
+                      <span className="request-card__meta">
+                        from {request.customerName || 'a buyer'} · {relativeTime(request.createdAt)}
+                      </span>
+                    </div>
+                    <StatusBadge
+                      status={request.status}
+                      label={QUOTATION_STATUS_LABELS[request.status]}
+                    />
+                  </header>
+
+                  <dl className="kv">
+                    <dt>Product / service</dt><dd>{brief.productService || '—'}</dd>
+                    <dt>Quantity</dt><dd>{brief.quantity || '—'}</dd>
+                    {brief.requirements && (<><dt>Requirements</dt><dd>{brief.requirements}</dd></>)}
+                    {brief.preferredDelivery && (
+                      <><dt>Preferred delivery</dt><dd>{brief.preferredDelivery}</dd></>
+                    )}
+                    {brief.message && (<><dt>Message</dt><dd>{brief.message}</dd></>)}
+                  </dl>
+
+                  <div className="dash-actions">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={responding === `${request.id}-accept`}
+                      onClick={() => respondToRequest(request, 'accept')}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={responding === `${request.id}-clarify`}
+                      onClick={() => respondToRequest(request, 'clarify')}
+                    >
+                      Request clarification
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      loading={responding === `${request.id}-decline`}
+                      onClick={() => respondToRequest(request, 'decline')}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <p className="text-muted mt-16">
+            Accepting a request moves it to your drafts below, where you can add line items and
+            send the priced quotation.
+          </p>
+        </div>
+      )}
+
       <div className="panel dash-toolbar mt-16">
         <div>
           <h2 className="panel__title">Quotations</h2>
@@ -1047,6 +1253,17 @@ function QuotationsTab({ business }) {
                     <td>{formatDate(q.createdAt)}</td>
                     <td>
                       <div className="row-actions">
+                        {[QUOTATION_STATUS.DRAFT, QUOTATION_STATUS.CLARIFICATION].includes(q.status) &&
+                          (q.items || []).length > 0 && (
+                            <button
+                              type="button"
+                              className="btn btn--ghost btn--sm"
+                              disabled={responding === `${q.id}-send`}
+                              onClick={() => dispatchQuotation(q)}
+                            >
+                              {responding === `${q.id}-send` ? 'Sending…' : 'Send to buyer'}
+                            </button>
+                          )}
                         <button
                           type="button"
                           className="btn btn--ghost btn--sm"

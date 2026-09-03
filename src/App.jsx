@@ -19,6 +19,11 @@ const BusinessesPage = lazy(() => import('./pages/BusinessesPage'));
 const BusinessDetailPage = lazy(() => import('./pages/BusinessDetailPage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const SavedPage = lazy(() => import('./pages/SavedPage'));
+const AboutCompanyPage = lazy(() => import('./pages/AboutCompanyPage'));
+const AboutServicesPage = lazy(() => import('./pages/AboutServicesPage'));
+const RequestQuotationPage = lazy(() => import('./pages/RequestQuotationPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
@@ -56,6 +61,8 @@ const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'));
 const AdminVerification = lazy(() => import('./pages/admin/AdminVerification'));
 const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'));
+const AdminFraud = lazy(() => import('./pages/admin/AdminFraud'));
+const AdminUserDossier = lazy(() => import('./pages/admin/AdminUserDossier'));
 
 function PageLoader() {
   return (
@@ -116,9 +123,16 @@ export default function App() {
             <Route path="/store/:id" element={<BusinessDetailPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/verify/:code" element={<VerificationPage />} />
+            <Route path="/about/company" element={<AboutCompanyPage />} />
+            <Route path="/about/services" element={<AboutServicesPage />} />
+            <Route path="/about" element={<Navigate to="/about/company" replace />} />
 
             {/* Authenticated */}
             <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+            <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
+            <Route path="/account/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+            <Route path="/saved" element={<RequireAuth><SavedPage /></RequireAuth>} />
+            <Route path="/favorites" element={<Navigate to="/saved" replace />} />
             <Route path="/sell" element={<RequireAuth><SellerOnboardingPage /></RequireAuth>} />
             <Route path="/seller" element={<RequireAuth><SellerDashboardPage /></RequireAuth>} />
             <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
@@ -129,6 +143,7 @@ export default function App() {
             <Route path="/payments" element={<RequireAuth><PaymentsPage /></RequireAuth>} />
             <Route path="/payment/:id" element={<RequireAuth><PaymentDetailPage /></RequireAuth>} />
             <Route path="/quotations" element={<RequireAuth><QuotationsPage /></RequireAuth>} />
+            <Route path="/quotations/request" element={<RequireAuth><RequestQuotationPage /></RequireAuth>} />
             <Route path="/quotation/:id" element={<RequireAuth><QuotationDetailPage /></RequireAuth>} />
             <Route path="/invoices" element={<RequireAuth><InvoicesPage /></RequireAuth>} />
             <Route path="/invoice/:id" element={<RequireAuth><InvoiceDetailPage /></RequireAuth>} />
@@ -151,6 +166,8 @@ export default function App() {
               <Route path="reports" element={<AdminReports />} />
               <Route path="verification" element={<AdminVerification />} />
               <Route path="security" element={<AdminSecurity />} />
+              <Route path="fraud" element={<AdminFraud />} />
+              <Route path="users/:uid" element={<AdminUserDossier />} />
             </Route>
 
             {/* 404 */}
