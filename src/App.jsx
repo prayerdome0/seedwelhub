@@ -150,6 +150,10 @@ export default function App() {
             <Route path="/receipts" element={<RequireAuth><ReceiptsPage /></RequireAuth>} />
             <Route path="/receipt/:id" element={<RequireAuth><ReceiptDetailPage /></RequireAuth>} />
             <Route path="/messages" element={<RequireAuth><MessagesPage /></RequireAuth>} />
+            {/* Group chats are reachable as /group/:id and as the equivalent
+                /messages/group/:id deep link. This alias is declared BEFORE
+                /messages/:id so "group" is never treated as a conversation id. */}
+            <Route path="/messages/group/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />
             <Route path="/messages/:id" element={<RequireAuth><ConversationPage /></RequireAuth>} />
             <Route path="/groups" element={<RequireAuth><GroupsPage /></RequireAuth>} />
             <Route path="/group/:id" element={<RequireAuth><GroupDetailPage /></RequireAuth>} />

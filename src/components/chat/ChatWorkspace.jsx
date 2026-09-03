@@ -13,7 +13,9 @@ import CameraModal from './CameraModal';
 import ForwardDialog from './ForwardDialog';
 import CallOverlay from './CallOverlay';
 import Lightbox from './Lightbox';
+import GroupPhotoEditor from './GroupPhotoEditor';
 import {
+  GroupInfoBlock,
   GroupSettingsForm,
   InfoPanel,
   MediaPanel,
@@ -61,6 +63,8 @@ import {
   setGroupTyping,
   setGroupAnnouncement,
   setMemberGroupMuted,
+  updateGroupDescription,
+  updateGroupPhoto,
   updateGroupSettings,
 } from '../../services/groupService';
 import { uploadToCloudinary, validateUploadFile } from '../../cloudinary/upload';
@@ -171,6 +175,9 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [announcementHidden, setAnnouncementHidden] = useState(false);
   const [busy, setBusy] = useState(false);
+  // "Change Group Photo" dialog (admin only).
+  const [photoEditorOpen, setPhotoEditorOpen] = useState(false);
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   const myName = profile?.name || user?.displayName || user?.email || 'You';
   const viewerId = user?.uid;
@@ -925,6 +932,58 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
     [meta, poll, showToast, viewerId]
   );
 
+  // Change Group Photo — upload, then patch the EXISTING group document so the
+  // new image appears everywhere immediately. No duplicate group is created.
+  const handleSaveGroupPhoto = useCallback(
+    async (croppedFile) => {
+      setPhotoSaving(true);
+      try {
+        const result = await uploadToCloudinary(croppedFile, { resourceType: 'image' });
+        await updateGroupPhoto(meta, result.url, viewerId);
+        setPhotoEditorOpen(false);
+        showToast('Group photo updated.', 'success');
+        await poll();
+      } catch (err) {
+        showToast(friendlyError(err) || 'Could not update the group photo.', 'error');
+      } finally {
+        setPhotoSaving(false);
+      }
+    },
+    [meta, poll, showToast, viewerId]
+  );
+
+  const handleSaveGroupName = useCallback(
+    async (name) => {
+      setBusy(true);
+      try {
+        await updateGroupSettings(meta, { name }, viewerId);
+        showToast('Group name updated.', 'success');
+        await poll();
+      } catch (err) {
+        showToast(friendlyError(err) || 'Could not update the group name.', 'error');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [meta, poll, showToast, viewerId]
+  );
+
+  const handleSaveGroupDescription = useCallback(
+    async (description) => {
+      setBusy(true);
+      try {
+        await updateGroupDescription(meta, description, viewerId);
+        showToast('Group description updated.', 'success');
+        await poll();
+      } catch (err) {
+        showToast(friendlyError(err) || 'Could not update the description.', 'error');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [meta, poll, showToast, viewerId]
+  );
+
   const handleSetAnnouncement = useCallback(
     async (text) => {
       try {
@@ -1034,7 +1093,16 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
     } else {
       items.push(
         { icon: 'ℹ️', label: 'Group info', onClick: () => setPanel('info') },
-        { icon: '👥', label: `Members (${members.length})`, onClick: () => setPanel('members') },
+        // Edit Group — admin-only entries. Regular members still see the group
+        // information (name, photo, description) but not these controls.
+        ...(viewerIsAdmin
+          ? [
+              { icon: '✏️', label: 'Edit Group', onClick: () => setPanel('settings') },
+              { icon: '🖼️', label: 'Change Group Photo', onClick: () => setPhotoEditorOpen(true) },
+              { icon: '📝', label: 'Edit Description', onClick: () => setPanel('settings') },
+            ]
+          : []),
+        { icon: '👥', label: viewerIsAdmin ? `Manage Members (${members.length})` : `Members (${members.length})`, onClick: () => setPanel('members') },
         { icon: '➕', label: 'Add members', onClick: () => setPanel('members'), disabled: !viewerIsAdmin },
         { icon: '🔔', label: 'Group notification settings', onClick: () => setPanel('settings') },
         { icon: '⚙️', label: 'Group settings', onClick: () => setPanel('settings'), disabled: !viewerIsAdmin },
@@ -1138,7 +1206,14 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
             {direct && meta?.sharedProductId && (
               <p className="chat-aside__note">This conversation started from a marketplace listing.</p>
             )}
-            {!direct && meta?.description && <p className="chat-aside__desc">{meta.description}</p>}
+            {!direct && (
+              <>
+                <h4 className="chat-aside__section">About this group</h4>
+                <p className={meta?.description ? 'chat-aside__desc' : 'chat-aside__empty'}>
+                  {meta?.description || 'No description yet.'}
+                </p>
+              </>
+            )}
           </InfoPanel>
         )}
         {panel === 'members' && (
@@ -1183,6 +1258,15 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
               </div>
             </InfoPanel>
           ) : (
+            <>
+            <GroupInfoBlock
+              group={meta || {}}
+              viewerIsAdmin={viewerIsAdmin}
+              saving={busy || photoSaving}
+              onChangePhoto={() => setPhotoEditorOpen(true)}
+              onSaveName={handleSaveGroupName}
+              onSaveDescription={handleSaveGroupDescription}
+            />
             <GroupSettingsForm
               group={meta || {}}
               viewerIsAdmin={viewerIsAdmin}
@@ -1192,6 +1276,7 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
               onSave={handleSaveGroupSettings}
               onSetAnnouncement={handleSetAnnouncement}
             />
+            </>
           ))}
       </SidePanel>
     );
@@ -1426,6 +1511,15 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
         onConfirm={handleClear}
       />
 
+      {!direct && (
+        <GroupPhotoEditor
+          open={photoEditorOpen}
+          currentPhoto={meta?.image || ''}
+          saving={photoSaving}
+          onCancel={() => setPhotoEditorOpen(false)}
+          onSave={handleSaveGroupPhoto}
+        />
+      )}
       <Lightbox src={lightbox?.src} caption={lightbox?.caption} onClose={() => setLightbox(null)} />
       <CallOverlay call={call} onClose={() => setCall(null)} />
 

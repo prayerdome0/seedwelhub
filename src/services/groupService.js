@@ -219,6 +219,30 @@ export async function updateGroupSettings(group, data, actorId) {
   return patchDoc(GROUPS, group.id, allowed);
 }
 
+/**
+ * Updates ONLY the group photo (admin only).
+ *
+ * The image is uploaded by the caller first; this patches the existing group
+ * document in place so no duplicate group record is ever created, and every
+ * screen reading `group.image` picks up the new URL on the next read.
+ */
+export async function updateGroupPhoto(group, imageUrl, actorId) {
+  await assertGroupAdmin(group, actorId);
+  return patchDoc(GROUPS, group.id, {
+    image: String(imageUrl || ''),
+    photoUpdatedAt: serverTimestamp(),
+    photoUpdatedBy: actorId,
+  });
+}
+
+/** Updates ONLY the group description (admin only). */
+export async function updateGroupDescription(group, description, actorId) {
+  await assertGroupAdmin(group, actorId);
+  return patchDoc(GROUPS, group.id, {
+    description: String(description || '').slice(0, 300),
+  });
+}
+
 /** Sets or clears the group announcement banner (admin only). */
 export async function setGroupAnnouncement(group, text, actorId) {
   await assertGroupAdmin(group, actorId);

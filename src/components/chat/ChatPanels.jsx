@@ -213,6 +213,166 @@ export function DangerAction({ icon, label, confirmLabel = 'Are you sure?', onCo
 // Group-specific panels.
 // ---------------------------------------------------------------------------
 
+/**
+ * Group Information — name, photo and description.
+ *
+ * EVERY member sees the information. Only authorized admins see the controls
+ * that change it (change photo / edit name / edit description). Non-admins get
+ * a read-only view, which matches the Firestore rules that reject their writes.
+ */
+export function GroupInfoBlock({
+  group,
+  viewerIsAdmin,
+  saving,
+  onChangePhoto,
+  onSaveName,
+  onSaveDescription,
+}) {
+  const [editingName, setEditingName] = useState(false);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [name, setName] = useState(group.name || '');
+  const [description, setDescription] = useState(group.description || '');
+
+  useEffect(() => {
+    setName(group.name || '');
+    setDescription(group.description || '');
+    setEditingName(false);
+    setEditingDesc(false);
+  }, [group.id, group.name, group.description]);
+
+  return (
+    <div className="group-info">
+      <div className="group-info__head">
+        <div className="group-info__avatar">
+          <Avatar src={group.image || ''} name={group.name || 'Group'} size="lg" />
+          {viewerIsAdmin && (
+            <button
+              type="button"
+              className="group-info__camera"
+              onClick={onChangePhoto}
+              disabled={saving}
+              title="Change group photo"
+              aria-label="Change group photo"
+            >
+              📷
+            </button>
+          )}
+        </div>
+
+        {editingName && viewerIsAdmin ? (
+          <form
+            className="group-info__inline"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const next = name.trim();
+              if (!next) return;
+              onSaveName(next);
+              setEditingName(false);
+            }}
+          >
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoFocus />
+            <button type="submit" className="btn btn--primary btn--sm" disabled={saving}>Save</button>
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={() => {
+                setName(group.name || '');
+                setEditingName(false);
+              }}
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <h4 className="group-info__name">
+            {group.name || 'Group'}
+            {viewerIsAdmin && (
+              <button
+                type="button"
+                className="chat-aside__mini"
+                onClick={() => setEditingName(true)}
+                title="Edit group name"
+                aria-label="Edit group name"
+              >
+                ✏️
+              </button>
+            )}
+          </h4>
+        )}
+      </div>
+
+      {viewerIsAdmin && (
+        <button
+          type="button"
+          className="btn btn--secondary btn--sm"
+          onClick={onChangePhoto}
+          disabled={saving}
+        >
+          🖼️ Change Group Photo
+        </button>
+      )}
+
+      <h4 className="chat-aside__section">About this group</h4>
+      {editingDesc && viewerIsAdmin ? (
+        <form
+          className="chat-aside__form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSaveDescription(description);
+            setEditingDesc(false);
+          }}
+        >
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            maxLength={300}
+            placeholder="What is this group about?"
+            autoFocus
+          />
+          <div className="chat-aside__actions">
+            <button type="submit" className="btn btn--primary btn--sm" disabled={saving}>
+              {saving ? <Spinner size="sm" /> : 'Save description'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={() => {
+                setDescription(group.description || '');
+                setEditingDesc(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <p className={group.description ? 'chat-aside__desc' : 'chat-aside__empty'}>
+            {group.description || 'No description yet.'}
+          </p>
+          {viewerIsAdmin && (
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={() => setEditingDesc(true)}
+              disabled={saving}
+            >
+              ✏️ Edit Description
+            </button>
+          )}
+        </>
+      )}
+
+      {!viewerIsAdmin && (
+        <p className="chat-aside__note">
+          Only group admins can change the group photo, name or description.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function GroupSettingsForm({
   group,
   viewerIsAdmin,

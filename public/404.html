@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Seedwel Hub</title>
+    <!-- Static-host fallback: any host that serves 404.html for unknown paths
+         (GitHub Pages, some CDNs) hands control straight back to the SPA, which
+         then renders the branded Seedwel Hub 404 page for genuinely bad URLs. -->
+    <script>
+      sessionStorage.setItem('seedwel:redirect', location.pathname + location.search + location.hash);
+      location.replace('/');
+    </script>
+  </head>
+  <body></body>
+</html>
