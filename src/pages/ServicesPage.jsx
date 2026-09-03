@@ -14,7 +14,7 @@ export default function ServicesPage() {
     <div className="container page">
       <div className="page__header">
         <h1 className="page__title">Services</h1>
-        <p className="page__subtitle">Find professional services from providers on Seedwel Hub.</p>
+        <p className="page__subtitle">Find professional services from providers on Xacheus.</p>
       </div>
 
       <div className="mb-24">

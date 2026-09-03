@@ -1,0 +1,27 @@
+# Xacheus robots.txt
+# https://xacheus.com/robots.txt
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://xacheus.com/sitemap.xml
+
+# Crawl-delay for polite bots
+Crawl-delay: 1
+
+# Disallow private/user-specific paths
+Disallow: /messages/
+Disallow: /group/
+Disallow: /profile/
+Disallow: /account/
+Disallow: /notifications/
+Disallow: /invoices/
+Disallow: /orders/
+Disallow: /quotations/
+Disallow: /receipts/
+Disallow: /payments/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /*.js$

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 
-// Seedwel Hub Firebase configuration.
+// Xacheus Firebase configuration.
 //
 // These values are the application's *public* web configuration. They are safe
 // to ship to the browser. They may be overridden with environment variables

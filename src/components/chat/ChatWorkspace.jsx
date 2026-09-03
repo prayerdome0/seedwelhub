@@ -81,7 +81,7 @@ import {
 // ChatWorkspace — the fixed messaging surface shared by direct conversations
 // (/messages/:id) and groups (/group/:id).
 //
-// Layout contract (a strict Seedwel Hub requirement):
+// Layout contract (a strict Xacheus requirement):
 //
 //   ┌──────────────── chat-app (100% of viewport minus site header) ────────┐
 //   │ chat-header   — always fixed, always visible                          │
@@ -741,7 +741,7 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
           await reportMessage({ message: reportState.message, reporterId: viewerId, reason, note });
         }
         setReportState(null);
-        showToast('Report submitted. Thank you for keeping Seedwel Hub safe.', 'success');
+        showToast('Report submitted. Thank you for keeping Xacheus safe.', 'success');
       } catch (err) {
         showToast(friendlyError(err) || 'Could not submit the report.', 'error');
       } finally {

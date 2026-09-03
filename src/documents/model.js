@@ -195,7 +195,7 @@ export function buildDocument(type, source, context = {}) {
       ].filter(Boolean),
       statusLabel: 'PAID',
       statusTone: 'success',
-      footnote: 'Thank you for doing business with SEEDWEL HUB.',
+      footnote: 'Thank you for doing business with XACHEUS.',
     };
   }
 
@@ -322,7 +322,7 @@ export function buildDocument(type, source, context = {}) {
     ].filter(Boolean),
     statusLabel: String(firstOf(source?.status, 'CONFIRMED')).toUpperCase(),
     statusTone: 'info',
-    footnote: 'Thank you for your order with SEEDWEL HUB.',
+    footnote: 'Thank you for your order with XACHEUS.',
   };
 }
 

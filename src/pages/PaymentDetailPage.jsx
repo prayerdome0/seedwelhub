@@ -13,7 +13,7 @@ import { DOCUMENT_TYPES, PAYMENT_STATUS } from '../utils/constants';
 import { formatDateTime } from '../utils/format';
 
 // Payment confirmation document. Renders through the same document identity as
-// receipts, invoices and quotations so every Seedwel Hub record looks alike and
+// receipts, invoices and quotations so every Xacheus record looks alike and
 // can be downloaded as a PDF.
 export default function PaymentDetailPage() {
   const { id } = useParams();

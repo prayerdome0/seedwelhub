@@ -88,7 +88,7 @@ export default function SearchPage() {
   return (
     <div className="container page">
       <div className="page__header">
-        <h1 className="page__title">Search Seedwel Hub</h1>
+        <h1 className="page__title">Search Xacheus</h1>
         <p className="page__subtitle">Find products, services and businesses.</p>
       </div>
 

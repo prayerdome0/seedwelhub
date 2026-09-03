@@ -80,7 +80,7 @@ export default function RegisterPage() {
   return (
     <div className="auth-card">
       <h1 className="auth-card__title">Create your account</h1>
-      <p className="auth-card__subtitle">Join Seedwel Hub to buy, sell, manage and grow.</p>
+      <p className="auth-card__subtitle">Join Xacheus to connect, share and discover.</p>
 
       {error && <div className="form__msg form__msg--error">{error}</div>}
 

@@ -346,7 +346,7 @@ export function MembersPanel({
             {adding ? <Spinner size="sm" /> : 'Add member'}
           </button>
           <p className="chat-aside__note">
-            Seedwel IDs are private — ask the member to copy it from their profile page.
+            Xacheus IDs are private — ask the member to copy it from their profile page.
           </p>
         </form>
       )}

@@ -13,7 +13,7 @@ export default function ProductsPage() {
     <div className="container page">
       <div className="page__header">
         <h1 className="page__title">Products</h1>
-        <p className="page__subtitle">Browse all products available on Seedwel Hub.</p>
+        <p className="page__subtitle">Browse all products available on Xacheus.</p>
       </div>
 
       <div className="mb-24">

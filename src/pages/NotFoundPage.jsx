@@ -7,7 +7,7 @@ export default function NotFoundPage() {
   return (
     <div className="notfound">
       <div className="notfound__code">404</div>
-      <img loading="lazy" decoding="async" src={WATERMARK_LOGO} alt="Seedwel Hub" style={{ height: 44, marginBottom: 16 }} />
+      <img loading="lazy" decoding="async" src={WATERMARK_LOGO} alt="Xacheus" style={{ height: 44, marginBottom: 16 }} />
       <h1 className="notfound__title">Page Not Found</h1>
       <p className="notfound__msg">
         The page you're looking for doesn't exist or may have been moved.

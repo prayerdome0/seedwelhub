@@ -64,7 +64,7 @@ export default function MarketplacePage() {
     <div className="container page">
       <div className="page__header">
         <h1 className="page__title">Marketplace</h1>
-        <p className="page__subtitle">Discover products from businesses across Seedwel Hub.</p>
+        <p className="page__subtitle">Discover products from businesses across Xacheus.</p>
       </div>
 
       {/* Category filter */}
@@ -119,7 +119,7 @@ export default function MarketplacePage() {
       {!user && !loading && (
         <p className="text-center text-muted mt-32">
           <Link to="/login">Log in</Link> to place orders.{" "}
-          <Link to="/sell">Start selling</Link> on Seedwel Hub.
+          <Link to="/sell">Start selling</Link> on Xacheus.
         </p>
       )}
     </div>

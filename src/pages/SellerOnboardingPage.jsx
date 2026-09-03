@@ -254,7 +254,7 @@ export default function SellerOnboardingPage() {
   return (
     <div className="container page page--narrow">
       <div className="page__header">
-        <h1 className="page__title">Start selling on Seedwel Hub</h1>
+        <h1 className="page__title">Start selling on Xacheus</h1>
         <p className="page__subtitle">
           Set up your business, then list products and services to reach customers across the hub.
         </p>

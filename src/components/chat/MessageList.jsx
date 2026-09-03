@@ -18,7 +18,7 @@ import {
 // The message container — the ONLY vertically scrollable area in the whole
 // messaging workspace.
 //
-// Scroll policy (a strict requirement for Seedwel Hub chat):
+// Scroll policy (a strict requirement for Xacheus chat):
 //  - the page body never scrolls; all scrolling happens on this element;
 //  - `scrollToMessage` sets this container's scrollTop directly (never
 //    scrollIntoView, which would walk up to the page and drag it along);

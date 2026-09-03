@@ -27,8 +27,8 @@ const SPARKS = [
 
 /**
  * Action-movie style opening sequence: cinematic letterbox bars, a "presents"
- * tag, the Seedwel logo slamming in with a flash and screen shake, the SEEDWEL
- * HUB wordmark, a light streak and sparkles — then a fade-out into the app.
+ * tag, the Xacheus logo slamming in with a flash and screen shake, the XACHEUS
+ * wordmark, a light streak and sparkles — then a fade-out into the app.
  * Plays once per app open and can be skipped (click / tap / any key).
  */
 export default function AppIntro({ onDone }) {
@@ -81,7 +81,7 @@ export default function AppIntro({ onDone }) {
       className={`app-intro ${leaving ? 'is-leaving' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Seedwel Hub intro"
+      aria-label="Xacheus intro"
       onClick={skip}
     >
       {/* Letterbox bars */}
@@ -113,14 +113,14 @@ export default function AppIntro({ onDone }) {
       {/* Center content */}
       <div className="app-intro__content">
         <p className="app-intro__presents">
-          <span>Seedwel Investment Limited</span>
+          <span>Xacheus</span>
           <em>Presents</em>
         </p>
         <div className="app-intro__logo">
-          <img loading="lazy" decoding="async" src={REAL_LOGO} alt="Seedwel Hub" draggable={false} />
+          <img loading="lazy" decoding="async" src={REAL_LOGO} alt="Xacheus" draggable={false} />
         </div>
-        <h1 className="app-intro__wordmark">SEEDWEL HUB</h1>
-        <p className="app-intro__tagline">BUY · SELL · MANAGE · GROW</p>
+        <h1 className="app-intro__wordmark">XACHEUS</h1>
+        <p className="app-intro__tagline">CONNECT · SHARE · DISCOVER</p>
       </div>
 
       <button type="button" className="app-intro__skip" onClick={skip}>

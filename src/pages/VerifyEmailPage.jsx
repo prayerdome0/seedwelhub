@@ -79,7 +79,7 @@ export default function VerifyEmailPage() {
       <h1 className="auth-card__title">Verify your email</h1>
       <p className="auth-card__subtitle">
         We sent a verification link to <strong>{user.email}</strong>. Click the
-        link in your inbox to activate your Seedwel Hub account.
+        link in your inbox to activate your Xacheus account.
       </p>
 
       {verified ? (
@@ -96,7 +96,7 @@ export default function VerifyEmailPage() {
 
       <div className="stack mt-24">
         {verified ? (
-          <Link to="/" className="btn btn--primary btn--block">Continue to Seedwel Hub</Link>
+          <Link to="/" className="btn btn--primary btn--block">Continue to Xacheus</Link>
         ) : (
           <>
             <button

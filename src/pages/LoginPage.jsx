@@ -17,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      showToast('Welcome back to Seedwel Hub!', 'success');
+      showToast('Welcome back to Xacheus!', 'success');
       navigate('/');
     } catch (err) {
       setError(friendlyAuthError(err));
@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="auth-card">
       <h1 className="auth-card__title">Welcome back</h1>
-      <p className="auth-card__subtitle">Log in to your Seedwel Hub account.</p>
+      <p className="auth-card__subtitle">Log in to your Xacheus account.</p>
 
       {error && <div className="form__msg form__msg--error">{error}</div>}
 

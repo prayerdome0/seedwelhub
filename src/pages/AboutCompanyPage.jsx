@@ -38,14 +38,14 @@ export default function AboutCompanyPage() {
         <h2 className="panel__title">Who we are</h2>
         <p className="about-prose">
           {APP_NAME} is a marketplace and transaction-management platform operated by
-          Seedwel Investment Limited. We connect buyers with verified businesses and give
+          Xacheus. We connect buyers with verified businesses and give
           those businesses the tools they need to actually run the sale — not just advertise it.
         </p>
         <p className="about-prose">
           Most marketplaces stop at the listing. We carry the transaction all the way through:
           a buyer requests a quotation, the seller prices it, an invoice is issued, payment is
           made and verified, and a numbered receipt is generated automatically. Every document
-          carries the same Seedwel Hub identity and can be downloaded as a PDF.
+          carries the same Xacheus identity and can be downloaded as a PDF.
         </p>
       </div>
 
@@ -65,8 +65,8 @@ export default function AboutCompanyPage() {
       <div className="panel">
         <h2 className="panel__title">Company details</h2>
         <dl className="kv">
-          <dt>Registered name</dt><dd>Seedwel Investment Limited</dd>
-          <dt>Trading as</dt><dd>Seedwel Hub</dd>
+          <dt>Platform</dt><dd>Xacheus</dd>
+          <dt>Trading as</dt><dd>Xacheus</dd>
           <dt>Group</dt><dd>Phiko Trading</dd>
           <dt>Platform</dt><dd>Marketplace &amp; transaction management</dd>
         </dl>
