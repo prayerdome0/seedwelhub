@@ -175,3 +175,191 @@ check('Drawer body is the single scroll area (no nested scrollers)', () => {
 });
 
 console.log(`\n${passed} assertions passed.`);
+
+console.log('\nMESSAGING COMPONENTS (fixed-layout workspace)');
+
+const { default: MessageBubble } = await import('../src/components/chat/MessageBubble.jsx');
+const { default: MessageList } = await import('../src/components/chat/MessageList.jsx');
+const { default: ChatHeader } = await import('../src/components/chat/ChatHeader.jsx');
+const { default: ChatComposer } = await import('../src/components/chat/ChatComposer.jsx');
+const { default: AttachmentPreview } = await import('../src/components/chat/AttachmentPreview.jsx');
+const { default: ForwardDialog } = await import('../src/components/chat/ForwardDialog.jsx');
+const { default: CallOverlay } = await import('../src/components/chat/CallOverlay.jsx');
+const { default: Lightbox } = await import('../src/components/chat/Lightbox.jsx');
+const { SidePanel, SearchPanel, MediaPanel, ReportDialog } = await import('../src/components/chat/ChatPanels.jsx');
+const chatUtils = await import('../src/utils/chat.js');
+
+const stamp = (date) => ({ seconds: Math.floor(date.getTime() / 1000), nanoseconds: 0 });
+const now = new Date('2026-09-03T12:00:00');
+const sampleMessages = [
+  { id: 'm1', senderId: 'u2', senderName: 'Bob', text: 'Morning! Check the price list', type: 'text', createdAt: stamp(new Date('2026-09-02T09:00:00')), readBy: ['u1', 'u2'] },
+  { id: 'm2', senderId: 'u1', text: 'Here it is', type: 'file', mediaUrl: 'https://x.test/f.pdf', mediaName: 'prices.pdf', mediaSize: 4096, createdAt: stamp(new Date('2026-09-03T10:00:00')), readBy: ['u1'] },
+  { id: 'm3', senderId: 'u2', text: '', type: 'voice', mediaUrl: 'https://x.test/v.webm', durationMs: 12000, createdAt: stamp(new Date('2026-09-03T10:05:00')), readBy: ['u1', 'u2'], reactions: { '👍': ['u1'] } },
+  { id: 'm4', senderId: 'u1', text: '🎉', type: 'sticker', createdAt: stamp(now), readBy: ['u1'] },
+  { id: 'm5', senderId: 'u2', type: 'location', location: { lat: -15.4, lng: 28.2, label: 'Warehouse' }, createdAt: stamp(now), readBy: ['u2'] },
+  { id: 'm6', senderId: 'u2', type: 'system', text: 'Bob joined the group', createdAt: stamp(now), readBy: ['u2'] },
+];
+
+const bubbleProps = {
+  viewerId: 'u1',
+  otherIds: ['u2'],
+  onReply: () => {}, onReact: () => {}, onCopy: () => {}, onForward: () => {},
+  onStar: () => {}, onPin: () => {}, onEdit: () => {}, onDelete: () => {},
+  onReport: () => {}, onJumpTo: () => {}, onOpenImage: () => {},
+};
+
+check('MessageBubble renders a text message with a reply quote', () => {
+  const out = render(h(MessageBubble, {
+    ...bubbleProps,
+    message: { ...sampleMessages[0], replyTo: 'm2' },
+    senderName: 'Bob',
+    own: false, showSender: true,
+    replyToMessage: { id: 'm2', senderId: 'u1', senderName: 'You', text: 'Here it is', type: 'file', mediaName: 'prices.pdf' },
+  }));
+  assert.match(out, /Bob/);
+  assert.match(out, /↩️ You/);
+  assert.match(out, /prices\.pdf/);
+  assert.match(out, /data-message-id="m1"/);
+});
+
+check('MessageBubble renders media types: file, voice, sticker, location', () => {
+  const file = render(h(MessageBubble, { ...bubbleProps, message: sampleMessages[1], own: true, showSender: true }));
+  assert.match(file, /prices\.pdf/);
+  assert.match(file, /4\.0 KB/);
+  assert.match(file, /✓/); // sent tick for own message
+
+  const voice = render(h(MessageBubble, { ...bubbleProps, message: sampleMessages[2], own: false, showSender: true }));
+  assert.match(voice, /chat-voice/);
+  assert.match(voice, /0:12/);
+  assert.match(voice, /👍/); // reaction chip
+
+  const sticker = render(h(MessageBubble, { ...bubbleProps, message: sampleMessages[3], own: true, showSender: true }));
+  assert.match(sticker, /chat-sticker/);
+
+  const location = render(h(MessageBubble, { ...bubbleProps, message: sampleMessages[4], own: false, showSender: true }));
+  assert.match(location, /Warehouse/);
+  assert.match(location, /google\.com\/maps/);
+});
+
+check('deleted and system messages render their special shapes', () => {
+  const deleted = render(h(MessageBubble, { ...bubbleProps, message: { id: 'x', senderId: 'u1', deleted: true, type: 'text', createdAt: stamp(now) }, own: true, showSender: true }));
+  assert.match(deleted, /This message was deleted/);
+  const system = render(h(MessageBubble, { ...bubbleProps, message: sampleMessages[5], own: false, showSender: false }));
+  assert.match(system, /chat-system/);
+  assert.match(system, /joined the group/);
+});
+
+check('MessageList separates days, marks unread, and shows the typing row', () => {
+  const out = render(h(MessageList, {
+    messages: sampleMessages,
+    viewerId: 'u1',
+    otherIds: ['u2'],
+    typingLabel: 'Bob is typing',
+    membersById: { u2: { name: 'Bob', isAdmin: true } },
+    memberNames: ['Bob'],
+    onAtBottomChange: () => {}, onNewMessages: () => {}, onMessageVisible: () => {},
+    onReply: () => {}, onReact: () => {}, onCopy: () => {}, onForward: () => {},
+    onStar: () => {}, onPin: () => {}, onEdit: () => {}, onDelete: () => {}, onReport: () => {},
+    onOpenImage: () => {},
+    replyToMessage: () => null,
+  }));
+  assert.match(out, /Yesterday/);
+  assert.match(out, /Today/);
+  assert.match(out, /New messages/); // unread divider before the first unread incoming message
+  assert.match(out, /Bob is typing/);
+  assert.match(out, /role="log"/); // the single scrollable conversation container
+  assert.ok(!/undefined/.test(out.replace(/data-message-id="[^"]*"/g, '')), 'no undefined leak');
+});
+
+check('ChatHeader renders the full fixed action bar', () => {
+  const out = render(h(ChatHeader, {
+    title: 'Bob', subtitle: 'Online', avatarSrc: '',
+    menuItems: [{ icon: '🔍', label: 'Search', onClick: () => {} }, { divider: true }, { icon: '🚩', label: 'Report', onClick: () => {}, danger: true }],
+    onOpenMenuDrawer: () => {}, onOpenInfo: () => {}, onToggleMute: () => {}, onStartCall: () => {},
+    pinnedMessage: sampleMessages[1], onUnpin: () => {}, onJumpToMessage: () => {},
+  }));
+  assert.match(out, /Bob/);
+  assert.match(out, /Online/);
+  assert.match(out, /aria-label="Open conversations menu"/);
+  assert.match(out, /aria-label="Voice call"/);
+  assert.match(out, /aria-label="Video call"/);
+  assert.match(out, /aria-label="Mute notifications"/);
+  assert.match(out, /aria-label="More options"/);
+  assert.match(out, /chat-pinned/); // pinned banner present
+});
+
+check('ChatComposer renders idle, reply, edit and disabled states', () => {
+  const base = { mode: 'direct', onSendText: () => {}, onEditSave: () => {}, onSendVoice: () => {}, onAttachFile: () => {}, onShareLocation: () => {}, onOpenCamera: () => {}, onCancelReply: () => {}, onCancelEdit: () => {}, onTypingChange: () => {}, onNotify: () => {} };
+  const idle = render(h(ChatComposer, base));
+  assert.match(idle, /aria-label="Hold to record a voice message"/);
+  assert.match(idle, /aria-label="Insert emoji"/);
+  assert.match(idle, /aria-label="Attach"/);
+  assert.match(idle, /Type a message/);
+
+  const replying = render(h(ChatComposer, { ...base, replyTo: { name: 'Bob', preview: 'I’ll send the quotation tomorrow.' } }));
+  assert.match(replying, /Replying to Bob/);
+  assert.match(replying, /quotation tomorrow/);
+
+  const editing = render(h(ChatComposer, { ...base, editing: { text: 'Fix this', type: 'text' } }));
+  assert.match(editing, /Editing message/);
+  assert.match(editing, /aria-label="Save edit"/);
+
+  const blocked = render(h(ChatComposer, { ...base, disabled: true, disabledReason: 'You blocked this user.' }));
+  assert.match(blocked, /You blocked this user\./);
+});
+
+check('AttachmentPreview shows caption + Cancel | Send', () => {
+  const out = mount(h(AttachmentPreview, {
+    attachment: { kind: 'image', file: { name: 'photo.jpg', size: 1024, type: 'image/jpeg' } },
+    onCancel: () => {}, onSend: () => {},
+  }));
+  assert.match(out, /Send photo/);
+  assert.match(out, /Add a caption…/);
+  assert.match(out, /Cancel/);
+});
+
+check('ForwardDialog, ReportDialog, CallOverlay and Lightbox render their overlays', () => {
+  // Portals need a real client render (see Drawer tests above).
+  const fwd = mount(h(ForwardDialog, {
+    open: true, targets: [{ kind: 'group', id: 'g1', title: 'Lusaka Wholesale', subtitle: '5 members' }],
+    message: sampleMessages[0], onClose: () => {}, onForward: async () => {},
+  }));
+  assert.match(fwd, /Forward message/);
+  assert.match(fwd, /Lusaka Wholesale/);
+
+  const report = mount(h(ReportDialog, { open: true, onClose: () => {}, onSubmit: () => {} }));
+  assert.match(report, /Spam or scam/);
+  assert.match(report, /Submit report/);
+
+  const call = mount(h(CallOverlay, { call: { name: 'Bob', video: false }, onClose: () => {} }));
+  assert.match(call, /Calling…/);
+  assert.match(call, /aria-label="End call"/);
+
+  const box = mount(h(Lightbox, { src: 'https://x.test/i.jpg', caption: 'New stock', onClose: () => {} }));
+  assert.match(box, /New stock/);
+  assert.match(box, /aria-label="Close preview"/);
+});
+
+check('side panels render search, media and the fixed-frame shell', () => {
+  const search = render(h(SidePanel, { title: 'Search conversation', onClose: () => {} },
+    h(SearchPanel, { term: 'price', onTermChange: () => {}, results: [sampleMessages[0]], onJump: () => {} })));
+  assert.match(search, /Search within conversation/);
+  assert.match(search, /price list/);
+
+  const media = render(h(SidePanel, { title: 'Media & files', onClose: () => {} },
+    h(MediaPanel, {
+      media: [{ id: 'i1', type: 'image', mediaUrl: 'x' }, { id: 'v1', type: 'video', mediaUrl: 'y' }],
+      files: [sampleMessages[1]], onJump: () => {}, onOpenImage: () => {},
+    })));
+  assert.match(media, /Photos &amp; videos/);
+  assert.match(media, /Documents/);
+  assert.match(media, /prices\.pdf/);
+});
+
+check('chat helpers back the rendered UI', () => {
+  assert.equal(chatUtils.messagePreview(sampleMessages[2]), '🎤 Voice message');
+  assert.match(chatUtils.messagePreview(sampleMessages[1]), /prices\.pdf/);
+  assert.ok(chatUtils.voiceBars('m3').length === 28);
+});
+
+console.log(`\n${passed} assertions passed.`);
