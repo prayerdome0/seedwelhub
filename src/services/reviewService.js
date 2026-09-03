@@ -16,13 +16,23 @@ export function getReviewsForProduct(productId) {
   });
 }
 
-export async function createReview({ businessId, productId, authorId, rating, comment = '' }) {
+export async function createReview({
+  businessId,
+  productId,
+  authorId,
+  rating,
+  comment = '',
+  authorName = '',
+  authorPhoto = '',
+}) {
   return createDoc(COL, {
     businessId,
     productId,
     authorId,
     rating,
     comment,
+    authorName,
+    authorPhoto,
   });
 }
 
