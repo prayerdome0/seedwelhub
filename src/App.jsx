@@ -22,6 +22,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import SettingsPage from './pages/SettingsPage';
+import SellerOnboardingPage from './pages/SellerOnboardingPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
@@ -115,6 +116,7 @@ export default function App() {
 
             {/* Authenticated */}
             <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+            <Route path="/sell" element={<RequireAuth><SellerOnboardingPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
             <Route path="/orders" element={<RequireAuth><OrdersPage /></RequireAuth>} />
             <Route path="/order/:id" element={<RequireAuth><OrderDetailPage /></RequireAuth>} />

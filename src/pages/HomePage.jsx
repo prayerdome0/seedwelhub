@@ -4,6 +4,8 @@ import ProductCard from '../components/ProductCard';
 import BusinessCard from '../components/BusinessCard';
 import ServiceCard from '../components/ServiceCard';
 import Spinner from '../components/Spinner';
+import BannerCarousel from '../components/BannerCarousel';
+import LogoMarquee from '../components/LogoMarquee';
 import { EmptyState, ErrorState } from '../components/PageState';
 import useAsync from '../hooks/useAsync';
 import { getFeaturedProducts, getLatestProducts } from '../services/productService';
@@ -18,38 +20,33 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero */}
+      {/* Hero — animated banner carousel + persistent search/stats */}
       <section className="hero">
         <div className="container">
-          <div className="hero__inner">
-            <p className="hero__eyebrow">Seedwel Investment Limited</p>
-            <h1 className="hero__title">
-              The marketplace to <span className="accent">buy, sell, manage</span> &amp; grow
-            </h1>
-            <p className="hero__subtitle">
-              Discover trusted businesses, products and services. Connect, transact and
-              grow your business with Seedwel Hub.
-            </p>
-            <div className="hero__search">
-              <SearchBar variant="large" placeholder="Search products, businesses, services…" />
+          <BannerCarousel />
+
+          <div className="hero__search">
+            <SearchBar variant="large" placeholder="Search products, businesses, services…" />
+          </div>
+          <div className="hero__stats">
+            <div className="hero__stat">
+              <div className="hero__stat-value">{products.data?.length || 0}+</div>
+              <div className="hero__stat-label">Products</div>
             </div>
-            <div className="hero__stats">
-              <div className="hero__stat">
-                <div className="hero__stat-value">{products.data?.length || 0}+</div>
-                <div className="hero__stat-label">Products</div>
-              </div>
-              <div className="hero__stat">
-                <div className="hero__stat-value">{featuredBusinesses.data?.length || 0}+</div>
-                <div className="hero__stat-label">Businesses</div>
-              </div>
-              <div className="hero__stat">
-                <div className="hero__stat-value">{services.data?.length || 0}+</div>
-                <div className="hero__stat-label">Services</div>
-              </div>
+            <div className="hero__stat">
+              <div className="hero__stat-value">{featuredBusinesses.data?.length || 0}+</div>
+              <div className="hero__stat-label">Businesses</div>
+            </div>
+            <div className="hero__stat">
+              <div className="hero__stat-value">{services.data?.length || 0}+</div>
+              <div className="hero__stat-label">Services</div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Auto-scrolling logo marquee */}
+      <LogoMarquee />
 
       <div className="container page">
         {/* Categories */}

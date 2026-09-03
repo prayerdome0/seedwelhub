@@ -119,7 +119,7 @@ export default function MarketplacePage() {
       {!user && !loading && (
         <p className="text-center text-muted mt-32">
           <Link to="/login">Log in</Link> to place orders.{" "}
-          <Link to="/register">Create an account</Link> to start selling.
+          <Link to="/sell">Start selling</Link> on Seedwel Hub.
         </p>
       )}
     </div>
