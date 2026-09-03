@@ -5,7 +5,8 @@ import { app } from './config';
 // must live server-side (in the Firebase project settings) and is never placed
 // in React source, public/, GitHub, HTML or browser storage.
 export const VAPID_PUBLIC_KEY =
-  import.meta.env.VITE_FIREBASE_VAPID_PUBLIC_KEY || '';
+  import.meta.env.VITE_FIREBASE_VAPID_PUBLIC_KEY ||
+  'BIs1W4xzjAB4UHcpZN4GS7PkOGpyo_jX-KPyvFWGmery1aoG_SG12JE5X_7U5sxH-M-V8WdrebjDqfRGPxIrs10';
 
 // Cache the messaging instance (only created when the browser supports it).
 let messagingInstance = null;
@@ -61,15 +62,20 @@ export async function getFirebaseMessagingToken() {
 }
 
 export function subscribeToForegroundMessages(handler) {
-  const messaging = getMessagingInstance();
-  // Resolve lazily; onMessage needs a ready instance.
-  messaging
+  // Resolve lazily; onMessage needs a ready instance. The returned function
+  // cancels the pending setup and unsubscribes as soon as it becomes available.
+  let unsubscribe = () => {};
+  let cancelled = false;
+  getMessagingInstance()
     .then((instance) => {
-      if (!instance) return () => {};
-      return onMessage(instance, handler);
+      if (cancelled || !instance) return;
+      unsubscribe = onMessage(instance, handler);
     })
     .catch(() => {});
-  return () => {};
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
 }
 
 export function friendlyNotificationError() {

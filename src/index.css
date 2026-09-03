@@ -583,6 +583,19 @@ a.card:hover {
 .form__msg--success { background: var(--success-bg); color: var(--success); }
 .form__msg--info { background: var(--info-bg); color: var(--info); }
 
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
 /* ---------- Auth pages ---------- */
 .auth-shell {
   min-height: 100vh;

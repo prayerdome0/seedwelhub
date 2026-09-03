@@ -15,7 +15,7 @@ export function EmptyState({ title = 'Nothing here yet', message = '', action })
   return (
     <div className="page-state page-state--empty">
       <div className="empty-illustration" aria-hidden="true">
-        <img src={WATERMARK_LOGO} alt="" />
+        <img loading="lazy" decoding="async" src={WATERMARK_LOGO} alt="" />
       </div>
       <h3 className="page-state__title">{title}</h3>
       {message && <p className="page-state__message">{message}</p>}

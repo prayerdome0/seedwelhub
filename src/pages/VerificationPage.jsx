@@ -57,7 +57,7 @@ export default function VerificationPage() {
 
       <div className="doc-marksheet" style={{ maxWidth: 620, margin: '0 auto' }}>
         <div className="doc-marksheet__head">
-          <img src={WATERMARK_LOGO} alt="Seedwel Hub" />
+          <img loading="lazy" decoding="async" src={WATERMARK_LOGO} alt="Seedwel Hub" />
           <span className="doc-marksheet__title">Verification Result</span>
           <StatusBadge status="verified" label="Verified" />
         </div>

@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="container site-footer__inner">
         <div className="site-footer__brand">
-          <img src={REAL_LOGO} alt="Seedwel Hub" className="site-footer__logo" />
+          <img loading="lazy" decoding="async" src={REAL_LOGO} alt="Seedwel Hub" className="site-footer__logo" />
           <div>
             <p className="site-footer__name">Seedwel Hub</p>
             <p className="site-footer__tagline">Buy. Sell. Manage. Grow.</p>

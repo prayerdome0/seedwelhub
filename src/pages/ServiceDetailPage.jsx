@@ -1,12 +1,15 @@
-import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Image from '../components/Image';
 import StarRating from '../components/StarRating';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
+import CheckoutForm from '../components/CheckoutForm';
 import { NotFoundState, ErrorState, LoadingState } from '../components/PageState';
 import useDocument from '../hooks/useDocument';
 import useStartConversation from '../hooks/useStartConversation';
 import { getService } from '../services/serviceService';
+import { placeOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { formatCurrency } from '../utils/format';
@@ -14,9 +17,12 @@ import { formatCurrency } from '../utils/format';
 export default function ServiceDetailPage() {
   const { id } = useParams();
   const { data: service, loading, error, notFound, retry } = useDocument(getService, id, []);
-  const { user } = useAuth();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const { user, profile } = useAuth();
   const { showToast } = useToast();
   const { start: startConversation, starting: startingConversation } = useStartConversation();
+  const navigate = useNavigate();
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={retry} />;
@@ -36,7 +42,42 @@ export default function ServiceDetailPage() {
       showToast('Please log in to request this service.', 'info');
       return;
     }
-    showToast('Service request flow is being set up. You can message the provider.', 'info');
+    setCheckoutOpen((open) => !open);
+  };
+
+  const handleSubmitRequest = async ({ name, phone, address, paymentMethod, note }) => {
+    setPlacing(true);
+    try {
+      const order = await placeOrder({
+        buyerId: user.uid,
+        buyerName: name,
+        buyerPhone: phone,
+        businessId: service.businessId || null,
+        businessName: service.businessName || service.providerName || 'Provider',
+        ownerId: service.ownerId,
+        items: [
+          {
+            type: 'service',
+            serviceId: service.id,
+            name: service.name,
+            price: rate ?? 0,
+            quantity: 1,
+            unit: service.rateUnit,
+            image: service.image || '',
+          },
+        ],
+        address,
+        paymentMethod,
+        note,
+        currency: service.currency || service.businessCurrency,
+      });
+      showToast(`Service request ${order.orderNumber} received.`, 'success');
+      navigate(`/order/${order.id}`);
+    } catch (err) {
+      showToast(err.message || 'Could not send the service request. Please try again.', 'error');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   const handleMessageProvider = () => {
@@ -88,7 +129,7 @@ export default function ServiceDetailPage() {
             <div className="buy-box mt-16">
               {rate !== undefined && rate !== null && (
                 <div className="buy-box__price">
-                  {formatCurrency(rate)}
+                  {formatCurrency(rate, service.currency)}
                   {service.rateUnit && <span className="service-card__unit"> / {service.rateUnit}</span>}
                 </div>
               )}
@@ -102,6 +143,18 @@ export default function ServiceDetailPage() {
               )}
               <div className="mt-16">
                 <Button variant="primary" className="btn--block" onClick={handleRequest}>Request Service</Button>
+                {checkoutOpen && (
+                  <CheckoutForm
+                    buyer={profile}
+                    summary={service.name}
+                    total={rate ?? 0}
+                    currency={service.currency}
+                    submitting={placing}
+                    submitLabel="Send Service Request"
+                    onCancel={() => setCheckoutOpen(false)}
+                    onSubmit={handleSubmitRequest}
+                  />
+                )}
               </div>
 
               {service.ownerId && (

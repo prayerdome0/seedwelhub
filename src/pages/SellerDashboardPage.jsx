@@ -5,8 +5,10 @@ import { useToast } from '../contexts/ToastContext';
 import useAsync from '../hooks/useAsync';
 import Button from '../components/Button';
 import Spinner from '../components/Spinner';
+import StatusBadge from '../components/StatusBadge';
 import { EmptyState, ErrorState } from '../components/PageState';
-import { getBusinessesByOwner } from '../services/businessService';
+import { getBusinessesByOwner, updateBusiness } from '../services/businessService';
+import { getOrdersByBusiness, getOrdersByOwner } from '../services/orderService';
 import {
   getProductsByBusiness,
   createProduct,
@@ -17,14 +19,22 @@ import {
 import {
   getInventoryByBusiness,
   createInventoryItem,
+  updateInventoryItem,
   adjustStock,
   deleteInventoryItem,
   bulkCreateInventory,
   isLowStock,
 } from '../services/inventoryService';
+import { getServicesByBusiness, updateService } from '../services/serviceService';
 import { uploadImageToCloudinary } from '../cloudinary/upload';
-import { BUSINESS_CATEGORIES } from '../utils/constants';
-import { formatCurrency, formatNumber } from '../utils/format';
+import {
+  BUSINESS_CATEGORIES,
+  CURRENCIES,
+  DEFAULT_CURRENCY,
+  currencyCode,
+  currencyLabel,
+} from '../utils/constants';
+import { formatCurrency, formatNumber, relativeTime } from '../utils/format';
 import {
   parseCsv,
   readFileAsText,
@@ -38,34 +48,41 @@ import {
 
 const TABS = [
   { id: 'channels', label: 'Where you sell' },
+  { id: 'orders', label: 'Orders' },
   { id: 'products', label: 'Products' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'import', label: 'Bulk import (CSV)' },
+  { id: 'currency', label: 'Currency' },
 ];
 
-const EMPTY_PRODUCT = {
-  name: '',
-  category: '',
-  description: '',
-  price: '',
-  currency: 'UGX',
-  sku: '',
-  stock: '',
-  unit: 'piece',
-  location: '',
-  image: '',
-};
+function emptyProduct(currency = DEFAULT_CURRENCY) {
+  return {
+    name: '',
+    category: '',
+    description: '',
+    price: '',
+    currency: currencyCode(currency),
+    sku: '',
+    stock: '',
+    unit: 'piece',
+    location: '',
+    image: '',
+  };
+}
 
-const EMPTY_INVENTORY = {
-  sku: '',
-  productName: '',
-  quantity: '',
-  unit: 'piece',
-  lowStockAlert: '',
-  costPrice: '',
-  warehouse: 'Main Store',
-  image: '',
-};
+function emptyInventory(currency = DEFAULT_CURRENCY) {
+  return {
+    sku: '',
+    productName: '',
+    quantity: '',
+    unit: 'piece',
+    lowStockAlert: '',
+    costPrice: '',
+    currency: currencyCode(currency),
+    warehouse: 'Main Store',
+    image: '',
+  };
+}
 
 function num(value) {
   const parsed = parseFloat(value);
@@ -183,7 +200,7 @@ export default function SellerDashboardPage() {
       <div className="grid grid--4 mt-16">
         <StatCard label="Live listings" value={formatNumber(stats.live)} hint={`${stats.hidden} hidden`} />
         <StatCard label="Stock keeping units" value={formatNumber(stats.skus)} hint={`${formatNumber(stats.stockUnits)} units`} />
-        <StatCard label="Stock value" value={formatCurrency(stats.stockValue)} hint="at cost price" />
+        <StatCard label="Stock value" value={formatCurrency(stats.stockValue, currencyCode(business?.currency))} hint="at cost price" />
         <StatCard label="Low stock alerts" value={formatNumber(stats.lowStock)} hint={stats.lowStock ? 'Needs restocking' : 'All healthy'} />
       </div>
 
@@ -201,6 +218,7 @@ export default function SellerDashboardPage() {
       </div>
 
       {tab === 'channels' && <ChannelsTab business={business} stats={stats} />}
+      {tab === 'orders' && <OrdersTab user={user} business={business} />}
       {tab === 'products' && (
         <ProductsTab
           user={user}
@@ -228,6 +246,173 @@ export default function SellerDashboardPage() {
           }}
         />
       )}
+      {tab === 'currency' && (
+        <CurrencyTab
+          user={user}
+          business={business}
+          products={products}
+          inventory={inventory}
+          showToast={showToast}
+          onSaved={() => businesses.retry()}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- currency */
+
+function CurrencyTab({ user, business, products, inventory, showToast, onSaved }) {
+  const [selectedCurrency, setSelectedCurrency] = useState(business?.currency || DEFAULT_CURRENCY);
+  const [applyExisting, setApplyExisting] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const services = useAsync(
+    () => (business?.id ? getServicesByBusiness(business.id) : Promise.resolve([])),
+    [business?.id]
+  );
+
+  useEffect(() => {
+    setSelectedCurrency(currencyCode(business?.currency));
+  }, [business?.id, business?.currency]);
+
+  if (!business) return null;
+
+  const currentCurrency = currencyCode(business.currency);
+  const targetCurrency = currencyCode(selectedCurrency);
+
+  const updateInBatches = async (items, updater) => {
+    let updated = 0;
+    for (const item of items || []) {
+      if (currencyCode(item.currency) === targetCurrency) continue;
+      // eslint-disable-next-line no-await-in-loop
+      await updater(item.id, { currency: targetCurrency });
+      updated += 1;
+    }
+    return updated;
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+    if (!targetCurrency || targetCurrency === currentCurrency) {
+      showToast('Choose a different currency to update.', 'info');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateBusiness(business.id, { currency: targetCurrency });
+
+      let updatedListings = 0;
+      if (applyExisting) {
+        const productList = products.data || [];
+        const serviceList = services.data || [];
+        const inventoryList = inventory.data || [];
+
+        const updatedProducts = await updateInBatches(productList, updateProduct);
+        const updatedServices = await updateInBatches(serviceList, updateService);
+        const updatedInventory = await updateInBatches(inventoryList, updateInventoryItem);
+        updatedListings = updatedProducts + updatedServices + updatedInventory;
+
+        products.retry();
+        inventory.retry();
+      }
+
+      showToast(
+        `Currency updated to ${currencyLabel(targetCurrency)}${updatedListings ? ` · ${updatedListings} listing${updatedListings === 1 ? '' : 's'} updated` : ''}.`,
+        'success'
+      );
+      if (onSaved) onSaved();
+    } catch (err) {
+      showToast(err.message || 'Could not update the currency. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const currencyOptions = CURRENCIES.map((c) => c.code);
+
+  return (
+    <div className="panel mt-16">
+      <h2 className="panel__title">Currency &amp; pricing</h2>
+      <p className="text-muted">
+        Choose the currency used for {business.name} prices. New products, services and stock
+        items default to this currency, and it is shown in the seller dashboard and on your
+        storefront.
+      </p>
+
+      <form onSubmit={handleSave}>
+        <div className="form__row">
+          <div className="form__group">
+            <label className="form__label" htmlFor="business-currency">Default currency</label>
+            <select
+              id="business-currency"
+              className="form__select"
+              value={selectedCurrency}
+              onChange={(e) => setSelectedCurrency(e.target.value)}
+            >
+              {CURRENCIES.map((currency) => (
+                <option key={currency.code} value={currency.code}>{currency.label}</option>
+              ))}
+            </select>
+            <p className="form__hint">
+              Current: <strong>{currencyLabel(currentCurrency)}</strong>
+            </p>
+          </div>
+          <div className="form__group">
+            <label className="form__label" htmlFor="currency-preview">Preview</label>
+            <input
+              id="currency-preview"
+              className="form__input"
+              value={formatCurrency(1200, targetCurrency)}
+              readOnly
+              disabled
+            />
+          </div>
+        </div>
+
+        <div className="form__group">
+          <label className="form__checkbox-label checkbox-row">
+            <input
+              type="checkbox"
+              checked={applyExisting}
+              onChange={(e) => setApplyExisting(e.target.checked)}
+            />
+            <span>
+              Apply this currency to existing products, services and stock items
+            </span>
+          </label>
+          <p className="form__hint">
+            Amounts are <strong>not</strong> converted or rounded — only the currency code changes
+            on the selected listings.
+          </p>
+        </div>
+
+        <div className="dash-actions">
+          <Button type="submit" variant="primary" loading={saving}>
+            Save Currency
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setSelectedCurrency(currentCurrency)}>
+            Reset
+          </Button>
+        </div>
+      </form>
+
+      <div className="mt-16">
+        <h3 className="panel__title">Availability</h3>
+        <p className="text-muted">
+          {currencyOptions.length} currencies available.
+        </p>
+        <div className="flex flex-wrap gap-8 mt-8">
+          {CURRENCIES.map((currency) => (
+            <span
+              key={currency.code}
+              className={`badge ${currency.code === currentCurrency ? 'badge--success' : 'badge--neutral'}`}
+            >
+              {currency.code}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -238,6 +423,72 @@ function StatCard({ label, value, hint }) {
       <span className="stat-card__label">{label}</span>
       <strong className="stat-card__value">{value}</strong>
       {hint && <span className="stat-card__hint">{hint}</span>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ orders */
+
+function OrdersTab({ user, business }) {
+  const businessOrders = useAsync(
+    () => (business?.id ? getOrdersByBusiness(business.id, 100) : Promise.resolve([])),
+    [business?.id]
+  );
+  const ownerOrders = useAsync(
+    () => (user?.uid ? getOrdersByOwner(user.uid, 100) : Promise.resolve([])),
+    [user?.uid]
+  );
+
+  if (!business) return null;
+
+  const loading = businessOrders.loading || ownerOrders.loading;
+  const error = businessOrders.error || ownerOrders.error;
+  const combined = [
+    ...(businessOrders.data || []),
+    ...(ownerOrders.data || []).filter(
+      (order) => order.businessId !== business?.id && order.ownerId === user?.uid
+    ),
+  ].filter((order, index, all) => all.findIndex((item) => item.id === order.id) === index);
+
+  if (loading) return <Spinner size="large" />;
+  if (error) return <ErrorState message={error} onRetry={() => { businessOrders.retry(); ownerOrders.retry(); }} />;
+  if (!combined.length) {
+    return (
+      <div className="panel">
+        <EmptyState title="No orders yet" message="Orders and service requests from this store will appear here." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="panel mt-16">
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Buyer</th>
+              <th>Total</th>
+              <th>Payment</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {combined.map((order) => (
+              <tr key={order.id}>
+                <td><Link to={`/order/${order.id}`} className="table__link">{order.orderNumber}</Link></td>
+                <td>{order.buyerName || '—'}</td>
+                <td>{formatCurrency(order.total, order.currency)}</td>
+                <td><StatusBadge status={order.paymentStatus} /></td>
+                <td><StatusBadge status={order.status} /></td>
+                <td>{relativeTime(order.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-muted mt-16">Showing {combined.length} order(s).</p>
     </div>
   );
 }
@@ -414,7 +665,7 @@ function ImageUrlField({ value, onChange, label = 'Image URL', id }) {
       <div className="image-url-field">
         <div className="image-url-field__preview">
           {value && valid ? (
-            <img src={value} alt="" onError={(e) => { e.currentTarget.style.opacity = 0.15; }} />
+            <img loading="lazy" decoding="async" src={value} alt="" onError={(e) => { e.currentTarget.style.opacity = 0.15; }} />
           ) : (
             <span aria-hidden="true">🖼️</span>
           )}
@@ -439,7 +690,7 @@ function ImageUrlField({ value, onChange, label = 'Image URL', id }) {
 }
 
 function ProductsTab({ user, business, products, showToast }) {
-  const [form, setForm] = useState(EMPTY_PRODUCT);
+  const [form, setForm] = useState(() => emptyProduct(business?.currency));
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -448,7 +699,7 @@ function ProductsTab({ user, business, products, showToast }) {
     setForm((prev) => ({ ...prev, [key]: event.target?.value ?? event }));
 
   const reset = () => {
-    setForm(EMPTY_PRODUCT);
+    setForm(emptyProduct(business?.currency));
     setEditingId(null);
     setShowForm(false);
   };
@@ -459,7 +710,7 @@ function ProductsTab({ user, business, products, showToast }) {
       category: product.category || '',
       description: product.description || '',
       price: product.price ?? '',
-      currency: product.currency || 'UGX',
+      currency: currencyCode(product.currency || business?.currency),
       sku: product.sku || '',
       stock: product.stock ?? '',
       unit: product.unit || 'piece',
@@ -489,7 +740,7 @@ function ProductsTab({ user, business, products, showToast }) {
         category: form.category,
         description: form.description.trim(),
         price: num(form.price),
-        currency: form.currency || 'UGX',
+        currency: currencyCode(form.currency || business?.currency),
         sku: form.sku.trim(),
         stock: num(form.stock),
         unit: form.unit.trim() || 'piece',
@@ -575,23 +826,33 @@ function ProductsTab({ user, business, products, showToast }) {
               <input id="p-price" type="number" min="0" step="0.01" className="form__input" value={form.price} onChange={set('price')} placeholder="0.00" />
             </div>
             <div className="form__group">
-              <label className="form__label" htmlFor="p-sku">SKU / product code</label>
-              <input id="p-sku" className="form__input" value={form.sku} onChange={set('sku')} placeholder="MAIZE-50" />
+              <label className="form__label" htmlFor="p-currency">Currency</label>
+              <select id="p-currency" className="form__select" value={form.currency} onChange={set('currency')}>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency.code} value={currency.code}>{currency.code}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="form__row">
             <div className="form__group">
+              <label className="form__label" htmlFor="p-sku">SKU / product code</label>
+              <input id="p-sku" className="form__input" value={form.sku} onChange={set('sku')} placeholder="MAIZE-50" />
+            </div>
+            <div className="form__group">
               <label className="form__label" htmlFor="p-stock">Stock on hand</label>
               <input id="p-stock" type="number" min="0" className="form__input" value={form.stock} onChange={set('stock')} placeholder="0" />
             </div>
+          </div>
+          <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="p-unit">Unit</label>
               <input id="p-unit" className="form__input" value={form.unit} onChange={set('unit')} placeholder="piece / bag / kg" />
             </div>
-          </div>
-          <div className="form__group">
-            <label className="form__label" htmlFor="p-location">Location</label>
-            <input id="p-location" className="form__input" value={form.location} onChange={set('location')} placeholder="Lusaka" />
+            <div className="form__group">
+              <label className="form__label" htmlFor="p-location">Location</label>
+              <input id="p-location" className="form__input" value={form.location} onChange={set('location')} placeholder="Lusaka" />
+            </div>
           </div>
           <div className="form__group">
             <label className="form__label" htmlFor="p-desc">Description</label>
@@ -641,7 +902,7 @@ function ProductsTab({ user, business, products, showToast }) {
                     <td>
                       <div className="cell-media">
                         {p.image ? (
-                          <img src={p.image} alt="" className="cell-media__img" />
+                          <img loading="lazy" decoding="async" src={p.image} alt="" className="cell-media__img" />
                         ) : (
                           <span className="cell-media__img cell-media__img--empty">📦</span>
                         )}
@@ -682,7 +943,7 @@ function ProductsTab({ user, business, products, showToast }) {
 /* --------------------------------------------------------------- inventory */
 
 function InventoryTab({ user, business, inventory, showToast }) {
-  const [form, setForm] = useState(EMPTY_INVENTORY);
+  const [form, setForm] = useState(() => emptyInventory(business?.currency));
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -711,10 +972,11 @@ function InventoryTab({ user, business, inventory, showToast }) {
         unit: form.unit.trim() || 'piece',
         lowStockAlert: num(form.lowStockAlert),
         costPrice: num(form.costPrice),
+        currency: currencyCode(form.currency || business?.currency),
         warehouse: form.warehouse.trim() || 'Main Store',
         image: form.image.trim(),
       });
-      setForm(EMPTY_INVENTORY);
+      setForm(emptyInventory(business.currency));
       setShowForm(false);
       showToast('Stock item added.', 'success');
       inventory.retry();
@@ -792,9 +1054,19 @@ function InventoryTab({ user, business, inventory, showToast }) {
               <input id="i-cost" type="number" min="0" step="0.01" className="form__input" value={form.costPrice} onChange={set('costPrice')} placeholder="0.00" />
             </div>
           </div>
-          <div className="form__group">
-            <label className="form__label" htmlFor="i-wh">Warehouse / store</label>
-            <input id="i-wh" className="form__input" value={form.warehouse} onChange={set('warehouse')} placeholder="Main Store" />
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="i-currency">Currency</label>
+              <select id="i-currency" className="form__select" value={form.currency} onChange={set('currency')}>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency.code} value={currency.code}>{currency.code}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="i-wh">Warehouse / store</label>
+              <input id="i-wh" className="form__input" value={form.warehouse} onChange={set('warehouse')} placeholder="Main Store" />
+            </div>
           </div>
           <ImageUrlField
             id="i-image"
@@ -837,7 +1109,7 @@ function InventoryTab({ user, business, inventory, showToast }) {
                     <td>
                       <div className="cell-media">
                         {item.image ? (
-                          <img src={item.image} alt="" className="cell-media__img" />
+                          <img loading="lazy" decoding="async" src={item.image} alt="" className="cell-media__img" />
                         ) : (
                           <span className="cell-media__img cell-media__img--empty">📦</span>
                         )}
@@ -858,7 +1130,7 @@ function InventoryTab({ user, business, inventory, showToast }) {
                         <button type="button" className="btn btn--ghost btn--sm" onClick={() => adjust(item, 1)} aria-label="Increase">+</button>
                       </div>
                     </td>
-                    <td>{formatCurrency(item.costPrice)}</td>
+                    <td>{formatCurrency(item.costPrice, currencyCode(item.currency || business?.currency))}</td>
                     <td>
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => remove(item)}>Remove</button>
                     </td>
@@ -875,13 +1147,13 @@ function InventoryTab({ user, business, inventory, showToast }) {
 
 /* ------------------------------------------------------------------ import */
 
-function mapProductRow(row) {
+function mapProductRow(row, defaultCurrency = DEFAULT_CURRENCY) {
   return {
     name: row.name || row.product_name || '',
     category: row.category || '',
     description: row.description || '',
     price: num(row.price),
-    currency: row.currency || 'UGX',
+    currency: currencyCode(row.currency || defaultCurrency),
     sku: row.sku || '',
     stock: num(row.stock || row.quantity),
     unit: row.unit || 'piece',
@@ -893,7 +1165,7 @@ function mapProductRow(row) {
   };
 }
 
-function mapInventoryRow(row) {
+function mapInventoryRow(row, defaultCurrency = DEFAULT_CURRENCY) {
   return {
     sku: row.sku || '',
     productName: row.product_name || row.name || '',
@@ -901,6 +1173,7 @@ function mapInventoryRow(row) {
     unit: row.unit || 'piece',
     lowStockAlert: num(row.low_stock_alert),
     costPrice: num(row.cost_price),
+    currency: currencyCode(row.currency || defaultCurrency),
     warehouse: row.warehouse || 'Main Store',
     image: row.image_url || row.image || '',
   };
@@ -944,7 +1217,8 @@ function ImportTab({ user, business, showToast, onImported }) {
         showToast('That CSV has no data rows.', 'error');
         return;
       }
-      const mapped = rows.map(kind === 'products' ? mapProductRow : mapInventoryRow);
+      const mapRow = kind === 'products' ? mapProductRow : mapInventoryRow;
+      const mapped = rows.map((row) => mapRow(row, business?.currency || DEFAULT_CURRENCY));
       setPreview(validateRows(kind, mapped));
       setFileName(file.name);
     } catch (err) {
@@ -1095,7 +1369,7 @@ function ImportTab({ user, business, showToast, onImported }) {
                     <td>{r.line}</td>
                     <td>
                       {r.data.image && isValidImageUrl(r.data.image) ? (
-                        <img src={r.data.image} alt="" className="cell-media__img" />
+                        <img loading="lazy" decoding="async" src={r.data.image} alt="" className="cell-media__img" />
                       ) : (
                         <span className="cell-media__img cell-media__img--empty">🖼️</span>
                       )}

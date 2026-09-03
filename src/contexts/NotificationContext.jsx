@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { getNotificationsForUser, markNotificationRead } from '../services/notificationService';
+import { getNotificationsForUser, markNotificationRead, markAllRead } from '../services/notificationService';
+import { subscribe } from '../services/_base';
+import { where } from '../firebase/firestore';
+import { COLLECTIONS } from '../utils/constants';
+import { sortByTimestamp } from '../utils/format';
+import { subscribeToForegroundMessages } from '../firebase/messaging';
 
 const NotificationContext = createContext({
   notifications: [],
@@ -8,7 +13,10 @@ const NotificationContext = createContext({
   loading: true,
   refresh: () => {},
   markRead: () => {},
+  markAllRead: () => {},
 });
+
+const MAX_NOTIFICATIONS = 100;
 
 export function NotificationProvider({ children }) {
   const { user } = useAuth();
@@ -24,20 +32,45 @@ export function NotificationProvider({ children }) {
       setLoading(false);
       return;
     }
+
     let active = true;
     setLoading(true);
-    getNotificationsForUser(user.uid)
-      .then((items) => {
-        if (active) setNotifications(items || []);
-      })
-      .catch(() => {
-        if (active) setNotifications([]);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+
+    const apply = (items) => {
+      if (!active) return;
+      setNotifications(
+        sortByTimestamp(items || [], 'createdAt', 'desc').slice(0, MAX_NOTIFICATIONS)
+      );
+      setLoading(false);
+    };
+
+    const loadOnce = () =>
+      getNotificationsForUser(user.uid, MAX_NOTIFICATIONS)
+        .then(apply)
+        .catch(() => apply([]));
+
+    // Immediate read plus a realtime listener, so the bell/badge updates the
+    // moment a notification is created (order, payment, message, admin action).
+    loadOnce();
+    const unsubscribe = subscribe(
+      COLLECTIONS.NOTIFICATIONS,
+      [where('recipientId', '==', user.uid)],
+      {
+        onData: apply,
+        onError: () => loadOnce(),
+      }
+    );
+
+    // If an FCM foreground push arrives while this screen is open, refresh the
+    // in-app notification list right away.
+    const unsubscribeFcm = subscribeToForegroundMessages(() => {
+      if (active) loadOnce();
+    });
+
     return () => {
       active = false;
+      unsubscribe();
+      if (typeof unsubscribeFcm === 'function') unsubscribeFcm();
     };
   }, [user, refreshKey]);
 
@@ -51,11 +84,23 @@ export function NotificationProvider({ children }) {
     []
   );
 
+  const markAll = useCallback(async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    if (user) await markAllRead(user.uid).catch(() => {});
+  }, [user]);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, loading, refresh, markRead }}
+      value={{
+        notifications,
+        unreadCount,
+        loading,
+        refresh,
+        markRead,
+        markAllRead: markAll,
+      }}
     >
       {children}
     </NotificationContext.Provider>

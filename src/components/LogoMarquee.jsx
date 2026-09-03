@@ -16,7 +16,7 @@ export default function LogoMarquee() {
       <div className="logo-marquee__track">
         {track.map((word, i) => (
           <span className="logo-marquee__item" key={`${word}-${i}`}>
-            <img src={REAL_LOGO} alt="" className="logo-marquee__logo" draggable={false} />
+            <img loading="lazy" decoding="async" src={REAL_LOGO} alt="" className="logo-marquee__logo" draggable={false} />
             <span className="logo-marquee__word">{word}</span>
             <span className="logo-marquee__dot" />
           </span>

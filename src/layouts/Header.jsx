@@ -33,7 +33,7 @@ export default function Header() {
     <header className="site-header">
       <div className="site-header__inner container">
         <Link to="/" className="site-header__brand" onClick={closeMenu}>
-          <img src={REAL_LOGO} alt="Seedwel Hub" className="site-header__logo" />
+          <img loading="lazy" decoding="async" src={REAL_LOGO} alt="Seedwel Hub" className="site-header__logo" />
           <span className="site-header__wordmark">Seedwel Hub</span>
         </Link>
 

@@ -21,7 +21,7 @@ export default function ProductCard({ product, showBusiness = true }) {
       <div className="product-card__body">
         <h3 className="product-card__title">{product.name || 'Unnamed product'}</h3>
         {product.category && <Badge tone="info" className="product-card__badge">{product.category}</Badge>}
-        <div className="product-card__price">{formatCurrency(product.price)}</div>
+        <div className="product-card__price">{formatCurrency(product.price, product.currency)}</div>
         {showBusiness && businessName && (
           <div className="product-card__seller">{businessName}</div>
         )}

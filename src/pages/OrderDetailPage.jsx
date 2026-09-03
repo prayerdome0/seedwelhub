@@ -54,8 +54,8 @@ export default function OrderDetailPage() {
                       <tr key={it.id || idx}>
                         <td>{it.name || `Item ${idx + 1}`}</td>
                         <td>{it.quantity}</td>
-                        <td>{formatCurrency(it.price)}</td>
-                        <td>{formatCurrency((Number(it.price) || 0) * (Number(it.quantity) || 0))}</td>
+                        <td>{formatCurrency(it.price, order.currency)}</td>
+                        <td>{formatCurrency((Number(it.price) || 0) * (Number(it.quantity) || 0), order.currency)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -86,9 +86,9 @@ export default function OrderDetailPage() {
           <div className="panel">
             <h3 className="panel__title">Summary</h3>
             <dl className="kv">
-              <dt>Subtotal</dt><dd>{formatCurrency(order.subtotal)}</dd>
-              <dt>Delivery</dt><dd>{formatCurrency(order.deliveryFee)}</dd>
-              <dt>Total</dt><dd>{formatCurrency(order.total)}</dd>
+              <dt>Subtotal</dt><dd>{formatCurrency(order.subtotal, order.currency)}</dd>
+              <dt>Delivery</dt><dd>{formatCurrency(order.deliveryFee, order.currency)}</dd>
+              <dt>Total</dt><dd>{formatCurrency(order.total, order.currency)}</dd>
               <dt>Payment</dt><dd>{order.paymentStatus}</dd>
             </dl>
             <div className="mt-16">

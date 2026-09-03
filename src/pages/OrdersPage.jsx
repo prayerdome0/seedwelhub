@@ -49,7 +49,7 @@ export default function OrdersPage() {
                   <tr key={o.id}>
                     <td><Link to={`/order/${o.id}`} className="table__link">{o.orderNumber}</Link></td>
                     <td>{o.businessName || '—'}</td>
-                    <td>{formatCurrency(o.total)}</td>
+                    <td>{formatCurrency(o.total, o.currency)}</td>
                     <td><StatusBadge status={o.paymentStatus} /></td>
                     <td><StatusBadge status={o.status} /></td>
                     <td>{relativeTime(o.createdAt)}</td>
