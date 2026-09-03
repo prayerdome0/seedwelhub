@@ -85,6 +85,29 @@ export function truncate(text, maxLength = 120) {
   return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
 }
 
+// Firestore timestamps, dates and serialized timestamps can all appear in
+// client data. Keeping the conversion here makes client-side sorting reliable
+// when a query intentionally avoids a composite index.
+export function timestampMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.toDate === 'function') return value.toDate().getTime();
+  if (typeof value.seconds === 'number') {
+    return (value.seconds * 1000) + Math.floor((value.nanoseconds || 0) / 1000000);
+  }
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+export function sortByTimestamp(items, field, direction = 'desc') {
+  const multiplier = direction === 'asc' ? 1 : -1;
+  return [...(items || [])].sort((a, b) => (
+    (timestampMillis(a?.[field]) - timestampMillis(b?.[field])) * multiplier
+  ));
+}
+
 export function slugify(text) {
   return String(text || '')
     .toLowerCase()
