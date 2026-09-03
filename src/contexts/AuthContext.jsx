@@ -6,6 +6,7 @@ import {
   subscribeToUserDoc,
   updateUser,
 } from '../services/userService';
+import { getBusinessesByOwner } from '../services/businessService';
 import { DEFAULT_ROLE } from '../utils/constants';
 
 const AuthContext = createContext({ user: null, profile: null, loading: true });
@@ -14,6 +15,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // Firebase Auth user
   const [profile, setProfile] = useState(null); // Firestore user document
   const [loading, setLoading] = useState(true);
+  // Businesses owned by the signed-in user. These drive the seller experience:
+  // owning at least one business makes someone a seller, and a business with
+  // `isVerified` makes them an authorized seller (which is what gates the
+  // Seller Dashboard entry in the account menu).
+  const [businesses, setBusinesses] = useState([]);
+  const [businessesLoading, setBusinessesLoading] = useState(true);
+  const [businessRefreshKey, setBusinessRefreshKey] = useState(0);
 
   // One-time read used as a fallback when the realtime listener errors, and by
   // refreshProfile() after explicit profile edits.
@@ -113,6 +121,32 @@ export function AuthProvider({ children }) {
     };
   }, [loadProfile]);
 
+  // Load the businesses this user owns, so the app knows whether to show the
+  // seller experience. Failures degrade gracefully to "not a seller" rather
+  // than blocking the UI.
+  useEffect(() => {
+    if (!user) {
+      setBusinesses([]);
+      setBusinessesLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setBusinessesLoading(true);
+    getBusinessesByOwner(user.uid)
+      .then((list) => {
+        if (active) setBusinesses(list || []);
+      })
+      .catch(() => {
+        if (active) setBusinesses([]);
+      })
+      .finally(() => {
+        if (active) setBusinessesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, businessRefreshKey]);
+
   const refreshProfile = useCallback(async () => {
     const firebaseUser = getCurrentUser();
     if (!firebaseUser) {
@@ -122,10 +156,21 @@ export function AuthProvider({ children }) {
     return loadProfile(firebaseUser);
   }, [loadProfile]);
 
+  const refreshBusinesses = useCallback(() => {
+    setBusinessRefreshKey((key) => key + 1);
+  }, []);
+
   // The role lives on the Firestore users document; the realtime subscription
   // above keeps it current while signed in.
   const role = profile?.role || DEFAULT_ROLE;
   const isAdmin = role === 'admin';
+
+  // Seller = owns at least one business. Verified/authorized seller = owns a
+  // business an admin has verified. Admins always see seller tooling.
+  const isSeller = isAdmin || businesses.length > 0;
+  const isVerifiedSeller =
+    isAdmin || businesses.some((business) => business.isVerified === true);
+  const primaryBusiness = businesses[0] || null;
 
   return (
     <AuthContext.Provider
@@ -135,6 +180,12 @@ export function AuthProvider({ children }) {
         loading,
         role,
         isAdmin,
+        isSeller,
+        isVerifiedSeller,
+        businesses,
+        businessesLoading,
+        primaryBusiness,
+        refreshBusinesses,
         refreshProfile,
       }}
     >

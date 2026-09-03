@@ -21,6 +21,9 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules/firebase')) return 'firebase';
           if (id.includes('node_modules/react')) return 'react';
+          // jsPDF is only pulled in when a document is downloaded, so it is
+          // kept out of the shared vendor chunk to protect first paint.
+          if (id.includes('node_modules/jspdf')) return 'pdf';
           if (id.includes('node_modules')) return 'vendor';
           return undefined;
         },

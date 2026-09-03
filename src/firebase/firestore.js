@@ -19,6 +19,7 @@ import {
   arrayUnion,
   arrayRemove,
   writeBatch,
+  runTransaction,
   Timestamp,
 } from 'firebase/firestore';
 import { app } from './config';
@@ -46,5 +47,6 @@ export {
   arrayUnion,
   arrayRemove,
   writeBatch,
+  runTransaction,
   Timestamp,
 };

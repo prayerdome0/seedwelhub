@@ -40,6 +40,26 @@ export function generateReceiptNumber(sequence = 0) {
   )}`;
 }
 
+// ---------------------------------------------------------------------------
+// Seedwel Hub document numbers — `SH-RCP-000001` style.
+//
+// The canonical, gap-free sequence is allocated transactionally by
+// documentNumberService.nextDocumentNumber(). This helper builds the string
+// from an already-allocated sequence, and is also used as the offline/fallback
+// path (where the sequence is derived from the clock so it stays unique and
+// monotonic even if the counter document cannot be read).
+// ---------------------------------------------------------------------------
+export function formatDocumentNumber(prefix, sequence) {
+  return `${prefix}-${pad(sequence, 6)}`;
+}
+
+export function fallbackSequence() {
+  // Monotonic-ish, collision-resistant sequence for the rare case where the
+  // transactional counter is unavailable. Uses the seconds-since-epoch tail so
+  // the number still sorts chronologically.
+  return Number(String(Math.floor(Date.now() / 1000)).slice(-6));
+}
+
 export function generateVerificationCode() {
   // A short, hard-to-guess public identifier used for documents/QR verification.
   const rnd =

@@ -50,3 +50,34 @@ export async function getPaymentInstructions(businessId) {
   );
   return methods;
 }
+
+export function getPaymentsByOwner(ownerId) {
+  return queryOnce(COL, [where('ownerId', '==', ownerId)], {
+    orderBy: ['createdAt', 'desc'],
+  });
+}
+
+export function getPaymentsByOrder(orderId) {
+  return queryOnce(COL, [where('orderId', '==', orderId)], {
+    orderBy: ['createdAt', 'desc'],
+  });
+}
+
+export function getPayment_ByReference(reference) {
+  return queryOnce(COL, [where('transactionReference', '==', reference)]);
+}
+
+/**
+ * Duplicate transaction-reference detection.
+ *
+ * The same bank/mobile-money reference being submitted against more than one
+ * order is one of the strongest signals of a recycled payment screenshot, so
+ * the reference is checked before a seller confirms a proof.
+ */
+export async function findDuplicateReferences(reference, excludeOrderId = null) {
+  if (!reference) return [];
+  const matches = await queryOnce(COL, [
+    where('transactionReference', '==', String(reference).trim()),
+  ]).catch(() => []);
+  return (matches || []).filter((payment) => payment.orderId !== excludeOrderId);
+}

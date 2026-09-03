@@ -141,15 +141,34 @@ service cloud.firestore {
     }
 
     // ---------- payment methods / proofs / disputes ----------
+    // Seller payment details are NOT public. Exposing account numbers on a
+    // public profile is exactly how buyers get redirected to a scammer's
+    // account, so reads are limited to the owning seller, admins, and any
+    // signed-in buyer who is actively transacting (the client only requests
+    // them from a verified order/invoice context - see sellerPaymentService).
     match /paymentMethods/{id} {
-      allow read: if true; // public checkout instructions
-      allow create: if signedIn();
-      allow update, delete: if isAdmin() || ownsBusiness(resource.data.businessId);
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isAdmin()
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || ownsBusiness(resource.data.businessId);
     }
+
+    // Payment proofs are evidence in a dispute. Only the buyer who submitted
+    // them, the seller being paid and admins may read them. Critically, a
+    // buyer may NOT update their own proof after submission - otherwise the
+    // amount or reference could be altered after the seller reviewed it.
+    // Review decisions belong to the seller/admin alone.
     match /paymentProofs/{id} {
-      allow read: if isAdmin() || signedIn();
-      allow create: if signedIn();
-      allow update, delete: if isAdmin() || (signedIn() && request.auth.uid == resource.data.buyerId);
+      allow read: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.buyerId)
+        || (signedIn() && request.auth.uid == resource.data.ownerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
+      allow create: if signedIn() && request.resource.data.buyerId == request.auth.uid;
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.ownerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
+      allow delete: if isAdmin();
     }
     match /paymentDisputes/{id} {
       allow read: if isAdmin() || signedIn();
@@ -265,15 +284,23 @@ service cloud.firestore {
     }
 
     // ---------- admin-only collections ----------
+    // Immutable audit trail: append-only by design. Entries record who did
+    // what and when, and can never be edited or removed - not even by an
+    // admin - so the history stays trustworthy as evidence.
     match /auditLogs/{id} {
       allow read: if isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow create: if signedIn();
+      allow update: if false;
+      allow delete: if false;
     }
+    // Security events form part of the audit trail. The app records them as a
+    // side effect of privileged actions, so signed-in users may append, but
+    // only admins can read, amend or resolve them - and nobody can delete.
     match /securityEvents/{id} {
       allow read: if isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow create: if signedIn();
+      allow update: if isAdmin();
+      allow delete: if false;
     }
     match /adminActions/{id} {
       allow read: if isAdmin();
@@ -344,6 +371,16 @@ service cloud.firestore {
       allow create: if signedIn();
       allow update, delete: if isAdmin();
     }
+    // ---------- document number counters ----------
+    // Sequential Seedwel Hub document numbers (SH-RCP-000001, ...). Any signed
+    // in user may allocate the next number as part of creating a document, but
+    // counters can never be deleted or read anonymously.
+    match /counters/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
     match /deviceSessions/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn();

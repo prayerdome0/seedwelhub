@@ -1,13 +1,23 @@
 import { Link, useParams } from 'react-router-dom';
-import StatusBadge from '../components/StatusBadge';
+import DocumentPage from '../components/documents/DocumentPage';
 import { NotFoundState, ErrorState, LoadingState } from '../components/PageState';
 import useDocument from '../hooks/useDocument';
+import useAsync from '../hooks/useAsync';
 import { getReceipt } from '../services/receiptService';
-import { formatCurrency, formatDate } from '../utils/format';
+import { getBusiness } from '../services/businessService';
+import { buildDocument } from '../documents/model';
+import { DOCUMENT_TYPES } from '../utils/constants';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ReceiptDetailPage() {
   const { id } = useParams();
-  const { data: r, loading, error, notFound, retry } = useDocument(getReceipt, id, []);
+  const { user } = useAuth();
+  const { data: receipt, loading, error, notFound, retry } = useDocument(getReceipt, id, []);
+
+  const business = useAsync(
+    () => (receipt?.businessId ? getBusiness(receipt.businessId) : Promise.resolve(null)),
+    [receipt?.businessId]
+  );
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={retry} />;
@@ -19,36 +29,38 @@ export default function ReceiptDetailPage() {
     );
   }
 
-  return (
-    <div className="container page">
-      <div className="mt-8 mb-16">
-        <Link to="/receipts" className="section__link">← Back to Receipts</Link>
-      </div>
+  const doc = buildDocument(DOCUMENT_TYPES.RECEIPT, receipt, {
+    business: business.data,
+    buyer: receipt.customerId === user?.uid ? { email: user?.email } : null,
+  });
 
-      <div className="doc-marksheet">
-        <div className="doc-marksheet__head">
-          <span className="doc-marksheet__title">Receipt {r.receiptNumber}</span>
-          <StatusBadge status={r.status} />
-        </div>
-        <div className="doc-marksheet__body">
-          <div className="doc-marksheet__row"><span className="doc-marksheet__label">Business</span><span className="doc-marksheet__value">{r.businessName || '—'}</span></div>
-          <div className="doc-marksheet__row"><span className="doc-marksheet__label">Customer</span><span className="doc-marksheet__value">{r.customerName || '—'}</span></div>
-          <div className="doc-marksheet__row"><span className="doc-marksheet__label">Amount</span><span className="doc-marksheet__value">{formatCurrency(r.amount)}</span></div>
-          <div className="doc-marksheet__row"><span className="doc-marksheet__label">Payment method</span><span className="doc-marksheet__value">{r.paymentMethod || '—'}</span></div>
-          <div className="doc-marksheet__row"><span className="doc-marksheet__label">Payment reference</span><span className="doc-marksheet__value">{r.paymentReference || '—'}</span></div>
-          <div className="doc-marksheet__row"><span className="doc-marksheet__label">Date</span><span className="doc-marksheet__value">{formatDate(r.createdAt)}</span></div>
-          {r.orderId && (
-            <div className="doc-marksheet__row"><span className="doc-marksheet__label">Order</span><span className="doc-marksheet__value"><Link to={`/order/${r.orderId}`} className="table__link">View order</Link></span></div>
+  return (
+    <DocumentPage document={doc} backTo="/receipts" backLabel="Back to Receipts">
+      <div className="panel">
+        <h2 className="panel__title">Related records</h2>
+        <div className="flex gap-8 flex-wrap">
+          {receipt.orderId && (
+            <Link to={`/order/${receipt.orderId}`} className="btn btn--outline btn--sm">
+              View order {receipt.orderNumber || ''}
+            </Link>
+          )}
+          {receipt.invoiceId && (
+            <Link to={`/invoice/${receipt.invoiceId}`} className="btn btn--outline btn--sm">
+              View invoice {receipt.invoiceNumber || ''}
+            </Link>
+          )}
+          {receipt.paymentId && (
+            <Link to={`/payment/${receipt.paymentId}`} className="btn btn--outline btn--sm">
+              View payment record
+            </Link>
+          )}
+          {receipt.verificationCode && (
+            <Link to={`/verify/${receipt.verificationCode}`} className="btn btn--ghost btn--sm">
+              Verify this receipt
+            </Link>
           )}
         </div>
       </div>
-
-      {r.verificationCode && (
-        <div className="panel mt-16">
-          <h2 className="panel__title">Verification</h2>
-          <p className="text-muted">Verify this document: <Link to={`/verify/${r.verificationCode}`} className="table__link">/verify/{r.verificationCode}</Link></p>
-        </div>
-      )}
-    </div>
+    </DocumentPage>
   );
 }

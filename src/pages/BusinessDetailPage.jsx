@@ -81,6 +81,9 @@ export default function BusinessDetailPage() {
             </div>
           </div>
           <div className="profile-hero__actions">
+            <Link to={`/quotations/request?businessId=${business.id}`} className="btn btn--primary">
+              📝 Request Quotation
+            </Link>
             <button type="button" className="btn btn--outline" onClick={contact} disabled={startingConversation}>
               {startingConversation ? 'Opening…' : '💬 Contact'}
             </button>

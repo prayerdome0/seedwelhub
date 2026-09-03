@@ -10,6 +10,7 @@ const LINKS = [
   { to: '/admin/reports', label: 'Reports', icon: '📄' },
   { to: '/admin/verification', label: 'Verification', icon: '✅' },
   { to: '/admin/security', label: 'Security', icon: '🔒' },
+  { to: '/admin/fraud', label: 'Fraud', icon: '🛡️' },
 ];
 
 export default function AdminLayout() {

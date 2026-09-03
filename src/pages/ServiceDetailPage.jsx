@@ -146,6 +146,7 @@ export default function ServiceDetailPage() {
                 {checkoutOpen && (
                   <CheckoutForm
                     buyer={profile}
+                    businessId={service.businessId}
                     summary={service.name}
                     total={rate ?? 0}
                     currency={service.currency}
@@ -155,6 +156,17 @@ export default function ServiceDetailPage() {
                     onSubmit={handleSubmitRequest}
                   />
                 )}
+              </div>
+
+              {/* Services are frequently priced per job, so a formal
+                  quotation request is offered alongside the direct request. */}
+              <div className="mt-8">
+                <Link
+                  to={`/quotations/request?serviceId=${service.id}`}
+                  className="btn btn--secondary btn--block"
+                >
+                  📝 Request Quotation
+                </Link>
               </div>
 
               {service.ownerId && (

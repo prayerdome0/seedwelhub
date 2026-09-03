@@ -210,6 +210,7 @@ export default function ProductDetailPage() {
                 {checkoutOpen && (
                   <CheckoutForm
                     buyer={profile}
+                    businessId={product.businessId}
                     summary={`${qty} × ${product.name}`}
                     total={(Number(product.price) || 0) * qty}
                     currency={product.currency}
@@ -219,6 +220,17 @@ export default function ProductDetailPage() {
                     onSubmit={handlePlaceOrder}
                   />
                 )}
+              </div>
+
+              {/* Buyers who need bulk pricing or custom terms can ask for a
+                  formal quotation instead of ordering at list price. */}
+              <div className="mt-8">
+                <Link
+                  to={`/quotations/request?productId=${product.id}`}
+                  className="btn btn--secondary btn--block"
+                >
+                  📝 Request Quotation
+                </Link>
               </div>
 
               {product.ownerId && (
