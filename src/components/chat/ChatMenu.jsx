@@ -58,11 +58,21 @@ export default function ChatMenu({ open, onClose, anchorRef, align = 'right', ch
     const handleKey = (event) => {
       if (event.key === 'Escape') onClose();
     };
+    // Scrolling the message list (the page's only scrollable area) detaches a
+    // fixed-position menu from its anchor — close it instead. Scroll events
+    // do not bubble, so listen on the capture phase. Scrolling INSIDE the
+    // menu itself is left alone.
+    const handleScroll = (event) => {
+      if (menuRef.current && event.target instanceof Node && menuRef.current.contains(event.target)) return;
+      onClose();
+    };
     document.addEventListener('mousedown', handlePointer);
     document.addEventListener('keydown', handleKey);
+    document.addEventListener('scroll', handleScroll, true);
     return () => {
       document.removeEventListener('mousedown', handlePointer);
       document.removeEventListener('keydown', handleKey);
+      document.removeEventListener('scroll', handleScroll, true);
     };
   }, [open, onClose, anchorRef]);
 

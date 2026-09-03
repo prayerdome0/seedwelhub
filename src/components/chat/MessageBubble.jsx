@@ -8,6 +8,7 @@ import {
   deliveryStatus,
   formatBytes,
   formatDuration,
+  mapsLink,
   matchSegments,
   messagePreview,
   messageTime,
@@ -29,11 +30,11 @@ import {
 // charge of what is actually allowed.
 // ---------------------------------------------------------------------------
 
-function Tick({ status }) {
+function Tick({ status, title }) {
   if (status === 'none') return null;
-  if (status === 'read') return <span className="chat-ticks chat-ticks--read" title="Read">✓✓</span>;
-  if (status === 'delivered') return <span className="chat-ticks" title="Delivered">✓✓</span>;
-  return <span className="chat-ticks chat-ticks--sent" title="Sent">✓</span>;
+  if (status === 'read') return <span className="chat-ticks chat-ticks--read" title={title || 'Read'}>✓✓</span>;
+  if (status === 'delivered') return <span className="chat-ticks" title={title || 'Delivered'}>✓✓</span>;
+  return <span className="chat-ticks chat-ticks--sent" title={title || 'Sent'}>✓</span>;
 }
 
 function VoicePlayer({ message, own }) {
@@ -206,14 +207,26 @@ export default function MessageBubble({
       ? 'You'
       : replyToMessage.senderName || 'Member'
     : '';
-    message.type === MESSAGE_TYPES.IMAGE ||
-    message.type === MESSAGE_TYPES.VIDEO ||
-    message.type === MESSAGE_TYPES.VOICE ||
-    message.type === MESSAGE_TYPES.LOCATION ||
-    message.type === MESSAGE_TYPES.FILE;
+  const isLocation = message.type === MESSAGE_TYPES.LOCATION && message.location;
+  // Groups get a richer tooltip ("Read by 3 of 8"); direct chats a plain word.
+  const receiptTitle =
+    status === 'none'
+      ? ''
+      : otherIds.length > 1
+        ? readReceiptLabel(message, viewerId, otherIds)
+        : status === 'read'
+          ? 'Read'
+          : status === 'delivered'
+            ? 'Delivered'
+            : 'Sent';
 
   const handleCopy = () => {
-    const payload = message.text || message.mediaName || message.mediaUrl || '';
+    // Location messages copy their map link; media copies name/URL; text copies text.
+    const payload =
+      message.text ||
+      message.mediaName ||
+      message.mediaUrl ||
+      (isLocation ? mapsLink(message.location) : '');
     if (onCopy) onCopy(payload);
     setMenuOpen(false);
   };
@@ -340,7 +353,7 @@ export default function MessageBubble({
                 {message.pending ? (
                   <span className="chat-ticks chat-ticks--pending" title="Sending…">🕓</span>
                 ) : (
-                  <Tick status={status} />
+                  <Tick status={status} title={receiptTitle} />
                 )}
               </div>
             </div>
@@ -396,7 +409,12 @@ export default function MessageBubble({
         <ChatMenuDivider />
         <ChatMenuItem icon="↩️" label="Reply" onClick={() => { onReply && onReply(); setMenuOpen(false); }} />
         <ChatMenuItem icon="⏪" label="Forward" onClick={() => { onForward && onForward(message); setMenuOpen(false); }} />
-        <ChatMenuItem icon="📋" label="Copy" onClick={handleCopy} disabled={!message.text && !message.mediaName && !message.mediaUrl} />
+        <ChatMenuItem
+          icon="📋"
+          label={isLocation ? 'Copy location' : 'Copy'}
+          onClick={handleCopy}
+          disabled={!message.text && !message.mediaName && !message.mediaUrl && !isLocation}
+        />
         <ChatMenuItem
           icon={starred ? '★' : '☆'}
           label={starred ? 'Unstar message' : 'Star message'}

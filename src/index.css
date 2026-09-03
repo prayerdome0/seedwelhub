@@ -4639,7 +4639,8 @@ body.chat-workspace-open .app-main {
   cursor: pointer;
   text-align: left;
 }
-.chat-mentions__item:hover { background: var(--bg); }
+.chat-mentions__item:hover,
+.chat-mentions__item--active { background: var(--bg); }
 .chat-mentions__avatar {
   width: 28px;
   height: 28px;

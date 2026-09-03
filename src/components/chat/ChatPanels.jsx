@@ -213,7 +213,15 @@ export function DangerAction({ icon, label, confirmLabel = 'Are you sure?', onCo
 // Group-specific panels.
 // ---------------------------------------------------------------------------
 
-export function GroupSettingsForm({ group, viewerIsAdmin, saving, onSave, onSetAnnouncement }) {
+export function GroupSettingsForm({
+  group,
+  viewerIsAdmin,
+  saving,
+  muted = false,
+  onToggleMute,
+  onSave,
+  onSetAnnouncement,
+}) {
   const [name, setName] = useState(group.name || '');
   const [description, setDescription] = useState(group.description || '');
   const [category, setCategory] = useState(group.category || '');
@@ -230,15 +238,42 @@ export function GroupSettingsForm({ group, viewerIsAdmin, saving, onSave, onSetA
     setAnnouncement(group.announcement?.text || '');
   }, [group]);
 
+  // Personal notification preferences are available to EVERY member — muting
+  // a group is a per-member setting, not an admin privilege.
+  const notificationBlock = (
+    <div className="chat-aside__form">
+      <h4 className="chat-aside__section">🔔 Your notifications</h4>
+      <p className="chat-aside__note">
+        {muted
+          ? 'This group is muted — you will not be notified about new messages.'
+          : 'You are notified about new messages in this group.'}
+      </p>
+      {onToggleMute && (
+        <button
+          type="button"
+          className={`btn btn--sm ${muted ? 'btn--primary' : 'btn--secondary'}`}
+          onClick={onToggleMute}
+          disabled={saving}
+        >
+          {muted ? '🔔 Unmute notifications' : '🔕 Mute notifications'}
+        </button>
+      )}
+    </div>
+  );
+
   if (!viewerIsAdmin) {
     return (
-      <p className="chat-aside__empty">
-        Only group admins can change group settings. You can still manage your own notifications below.
-      </p>
+      <>
+        <p className="chat-aside__empty">
+          Only group admins can change group settings.
+        </p>
+        {notificationBlock}
+      </>
     );
   }
 
   return (
+    <>
     <form
       className="chat-aside__form"
       onSubmit={(e) => {
@@ -296,6 +331,8 @@ export function GroupSettingsForm({ group, viewerIsAdmin, saving, onSave, onSetA
         </button>
       </div>
     </form>
+    {notificationBlock}
+    </>
   );
 }
 
