@@ -2,17 +2,218 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    
+    <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0f1f33" />
-    <meta
-      name="description"
-      content="Seedwel Hub — an all-in-one marketplace and business platform. Buy, sell, manage and grow with Seedwel. Connect with trusted businesses, products and services."
-    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Xacheus" />
+    <meta name="application-name" content="Xacheus" />
+    <meta name="msapplication-TileColor" content="#0f1f33" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>Xacheus — Connect, Share & Discover</title>
+    <meta name="title" content="Xacheus — Connect, Share & Discover" />
+    <meta name="description" content="Xacheus is a social platform built for people, creativity, discovery, and real connection. Connect with friends, join groups, share content, and explore new communities." />
+    <meta name="keywords" content="social network, social platform, messaging, groups, community, connect, share, discover, chat, friends, network" />
+    <meta name="author" content="Xacheus" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://xacheus.com/" />
+    <meta property="og:title" content="Xacheus — Connect, Share & Discover" />
+    <meta property="og:description" content="Xacheus is a social platform built for people, creativity, discovery, and real connection. Connect with friends, join groups, share content, and explore new communities." />
+    <meta property="og:image" content="https://xacheus.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Xacheus - Connect, Share & Discover" />
+    <meta property="og:site_name" content="Xacheus" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://xacheus.com/" />
+    <meta property="twitter:title" content="Xacheus — Connect, Share & Discover" />
+    <meta property="twitter:description" content="Xacheus is a social platform built for people, creativity, discovery, and real connection. Connect with friends, join groups, share content, and explore new communities." />
+    <meta property="twitter:image" content="https://xacheus.com/og-image.png" />
+    <meta property="twitter:image:alt" content="Xacheus - Connect, Share & Discover" />
+    <meta property="twitter:site" content="@xacheus" />
+    <meta property="twitter:creator" content="@xacheus" />
+    
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <title>Seedwel Hub — Buy. Sell. Manage. Grow.</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    
+    <!-- Structured Data - Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Xacheus",
+      "url": "https://xacheus.com",
+      "logo": "https://xacheus.com/favicon.png",
+      "description": "Xacheus is a social platform built for people, creativity, discovery, and real connection.",
+      "sameAs": [
+        "https://twitter.com/xacheus",
+        "https://facebook.com/xacheus",
+        "https://instagram.com/xacheus",
+        "https://linkedin.com/company/xacheus"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "support@xacheus.com",
+        "contactType": "Customer Support"
+      }
+    }
+    </script>
+    
+    <!-- Structured Data - WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Xacheus",
+      "url": "https://xacheus.com",
+      "description": "A social platform built for people, creativity, discovery, and real connection.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://xacheus.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
+    <!-- Structured Data - Software Application -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Xacheus",
+      "operatingSystem": "Web, iOS, Android",
+      "applicationCategory": "SocialNetworkingApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "A social platform for connecting, sharing, and discovering."
+    }
+    </script>
+    
+    <!-- DNS Prefetch for faster connections -->
+    <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+    
+    <!-- Performance hints -->
+    <link rel="preload" href="/favicon.png" as="image" />
+    
+    <!-- Theme color for browser chrome -->
+    <meta name="theme-color" content="#0f1f33" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1f33" media="(prefers-color-scheme: dark)" />
+    
+    <!-- iOS full screen -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Register Service Worker for PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered:', registration.scope);
+              
+              // Check for updates
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New content available, show update prompt
+                    console.log('New content available, refresh to update.');
+                  }
+                });
+              });
+            })
+            .catch((error) => {
+              console.log('SW registration failed:', error);
+            });
+        });
+        
+        // Handle controller change (after update)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        });
+      }
+    </script>
+    
+    <!-- PWA Install Prompt Handler -->
+    <script>
+      let deferredPrompt;
+      
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        e.preventDefault();
+        // Stash the event so it can be triggered later
+        deferredPrompt = e;
+        
+        // Show custom install button or notification
+        console.log('PWA install prompt available');
+        
+        // Dispatch custom event for the app to handle
+        window.dispatchEvent(new CustomEvent('pwa-install-available', { detail: deferredPrompt }));
+      });
+      
+      window.addEventListener('appinstalled', () => {
+        // Hide the custom install UI
+        deferredPrompt = null;
+        console.log('PWA installed successfully');
+        
+        // Dispatch custom event
+        window.dispatchEvent(new CustomEvent('pwa-installed'));
+        
+        // Optionally track installation
+        if (typeof gtag !== 'undefined') {
+          gtag('event', 'pwa_install', {
+            'event_category': 'engagement',
+            'event_label': 'PWA Install'
+          });
+        }
+      });
+      
+      // Function to trigger install prompt (call this from your UI)
+      window.installPWA = async () => {
+        if (!deferredPrompt) {
+          console.log('Install prompt not available');
+          return false;
+        }
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('Install prompt outcome:', outcome);
+        deferredPrompt = null;
+        return outcome === 'accepted';
+      };
+    </script>
   </body>
 </html>

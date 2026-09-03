@@ -18,7 +18,7 @@ export default function AdminLayout() {
     <div className="container page">
       <div className="page__header">
         <h1 className="page__title">Admin</h1>
-        <p className="page__subtitle">Manage the Seedwel Hub platform.</p>
+        <p className="page__subtitle">Manage the Xacheus platform.</p>
       </div>
 
       <div className="admin-layout">

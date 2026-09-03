@@ -1,7 +1,7 @@
 import { REAL_LOGO } from '../assets';
 
 /**
- * A real marketplace photo with a small Seedwel Hub brand lockup layered over
+ * A real marketplace photo with a small Xacheus brand lockup layered over
  * it. Keeping the logo separate from the source image means the original photo
  * stays natural while every banner still carries the Seedwel mark consistently.
  */
@@ -16,9 +16,9 @@ export default function BrandPhoto({ src, alt, label, objectPosition = 'center',
         draggable={false}
       />
       <div className="banner-photo__shade" aria-hidden="true" />
-      <div className="banner-photo__brand" aria-label="Seedwel Hub">
+      <div className="banner-photo__brand" aria-label="Xacheus">
         <img loading="lazy" decoding="async" src={REAL_LOGO} alt="" draggable={false} />
-        <span>Seedwel <strong>Hub</strong></span>
+        <span>Xacheus</span>
       </div>
       {label && (
         <div className="banner-photo__label">

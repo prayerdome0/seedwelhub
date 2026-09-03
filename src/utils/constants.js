@@ -1,7 +1,7 @@
 // Application-wide constants.
 
-export const APP_NAME = 'Seedwel Hub';
-export const APP_TAGLINE = 'Buy. Sell. Manage. Grow.';
+export const APP_NAME = 'Xacheus';
+export const APP_TAGLINE = 'Connect. Share. Discover.';
 
 export const DEFAULT_ROLE = 'user';
 export const ADMIN_ROLE = 'admin';

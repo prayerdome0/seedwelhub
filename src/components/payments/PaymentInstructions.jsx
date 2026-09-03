@@ -90,7 +90,7 @@ export default function PaymentInstructions({
 
       <p className="pay-warning">
         ⚠️ Only pay using the details shown here. If anyone asks you to pay a different account,
-        stop and report it — Seedwel Hub will never change these details by message.
+        stop and report it — Xacheus will never change these details by message.
       </p>
     </div>
   );

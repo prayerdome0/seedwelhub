@@ -41,7 +41,7 @@ export default function GroupsPage() {
     <div className="container page">
       <div className="page__header">
         <h1 className="page__title">Groups</h1>
-        <p className="page__subtitle">Join groups and communities on Seedwel Hub.</p>
+        <p className="page__subtitle">Join groups and communities on Xacheus.</p>
       </div>
 
       <section className="section">

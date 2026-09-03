@@ -12,7 +12,7 @@ import { APP_NAME } from '../utils/constants';
 // ---------------------------------------------------------------------------
 // The application header, identical on every screen:
 //
-//     ☰ Menu  |  Seedwel Hub  |  🔔 Notifications  |  Account
+//     ☰ Menu  |  Xacheus  |  🔔 Notifications  |  Account
 //
 // All navigation now lives in the drawers, which keeps the bar itself clean
 // and consistent at every breakpoint. The desktop search stays in the header

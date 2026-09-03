@@ -128,11 +128,17 @@ ul {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .app-main {
   flex: 1;
   width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .container {
@@ -3812,24 +3818,68 @@ code, .table__link, .kv dd, .panel p, dd, td, th { overflow-wrap: anywhere; }
       overflow, no clipped controls.
    ============================================================ */
 
+/* Mobile viewport fix: use 100dvh for proper keyboard handling */
+html {
+  height: 100%;
+  /* iOS Safari: prevent unwanted address bar expansion */
+  scroll-behavior: auto;
+}
+
 body.chat-workspace-open {
   overflow: hidden;
   height: 100dvh;
+  /* iOS Safari: fixed positioning works better with position: fixed on body */
+  position: fixed;
+  inset: 0;
   overscroll-behavior: none;
+  touch-action: manipulation;
 }
+
 body.chat-workspace-open .app-shell {
   height: 100dvh;
+  height: 100%;
   overflow: hidden;
 }
+
+body.chat-workspace-open .site-header {
+  /* Keep header visible above chat */
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
 body.chat-workspace-open .site-footer {
   display: none;
 }
+
 body.chat-workspace-open .app-main {
   flex: 1;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: calc(100dvh - var(--header-h));
+  max-height: calc(100dvh - var(--header-h));
+}
+
+/* Mobile: ensure chat fills available space */
+@media (max-width: 820px) {
+  body.chat-workspace-open .app-main {
+    height: calc(100dvh - var(--header-h));
+    max-height: calc(100dvh - var(--header-h));
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  body.chat-workspace-open {
+    height: -webkit-fill-available;
+  }
+  
+  body.chat-workspace-open .app-main {
+    height: calc(-webkit-fill-available - var(--header-h));
+    max-height: calc(-webkit-fill-available - var(--header-h));
+  }
 }
 
 .chat-app {
@@ -3841,6 +3891,9 @@ body.chat-workspace-open .app-main {
   position: relative;
   background: var(--bg-soft);
   overflow: hidden;
+  /* Ensure chat fills parent container */
+  height: 100%;
+  max-height: 100%;
 }
 .chat-app--loading,
 .chat-app--state {
@@ -3865,8 +3918,12 @@ body.chat-workspace-open .app-main {
   border-bottom: 1px solid var(--border);
   min-height: 60px;
   flex-shrink: 0;
+  flex: 0 0 auto;
   position: relative;
   z-index: 8;
+  /* Safe area for notched phones */
+  padding-left: calc(8px + env(safe-area-inset-left, 0px));
+  padding-right: calc(8px + env(safe-area-inset-right, 0px));
 }
 .chat-header__icon {
   width: 40px;
@@ -4020,6 +4077,7 @@ body.chat-workspace-open .app-main {
 .chat-body {
   flex: 1 1 auto;
   min-height: 0;
+  min-height: 100px; /* Ensure minimum height for messages */
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -4029,6 +4087,11 @@ body.chat-workspace-open .app-main {
   flex-direction: column;
   gap: 2px;
   outline: none;
+  /* Ensure scrollable area fills available space */
+  height: 100%;
+  max-height: 100%;
+  /* Extra bottom padding to ensure composer doesn't overlap content */
+  padding-bottom: max(18px, calc(70px + env(safe-area-inset-bottom, 0px)));
 }
 .chat-body__loading,
 .chat-body__empty {
@@ -4430,7 +4493,7 @@ body.chat-workspace-open .app-main {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 92px;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 8px);
   z-index: 9;
   border: none;
   background: var(--navy);
@@ -4451,11 +4514,19 @@ body.chat-workspace-open .app-main {
 /* ---------- Composer (fixed at bottom) ---------- */
 .chat-composer {
   flex-shrink: 0;
+  flex: 0 0 auto;
   background: var(--surface);
   border-top: 1px solid var(--border);
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px) + 4px);
   position: relative;
   z-index: 8;
+  /* Ensure composer is always visible */
+  align-self: flex-end;
+  width: 100%;
+  /* Safe area for notched phones */
+  padding-left: calc(8px + env(safe-area-inset-left, 0px));
+  padding-right: calc(8px + env(safe-area-inset-right, 0px));
 }
 .chat-composer__row {
   display: flex;
@@ -5505,23 +5576,85 @@ body.chat-workspace-open .app-main {
 
 /* ---------- Mobile fit: no horizontal overflow, no clipped controls ---------- */
 @media (max-width: 820px) {
-  .chat-header { padding: 6px 8px; min-height: 56px; gap: 4px; }
+  .chat-header { 
+    padding: 6px 8px; 
+    min-height: 56px; 
+    gap: 4px; 
+    padding-left: calc(6px + env(safe-area-inset-left, 0px));
+    padding-right: calc(6px + env(safe-area-inset-right, 0px));
+  }
   .chat-header__icon { width: 36px; height: 36px; font-size: 17px; }
   .chat-header__title { font-size: 14.5px; }
   .chat-header__status { font-size: 11.5px; }
   .chat-msg__content { max-width: 84%; }
   .chat-bubble__quote-text { max-width: 200px; }
-  .chat-body { padding: 12px 10px 14px; }
+  .chat-body { 
+    padding: 12px 10px 14px; 
+    /* Extra bottom padding for composer visibility */
+    padding-bottom: max(14px, calc(60px + env(safe-area-inset-bottom, 8px)));
+  }
   .chat-aside { width: 100%; border-left: none; }
-  .chat-jump-latest { bottom: 86px; font-size: 12px; }
-  .chat-composer { padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .chat-jump-latest { 
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px)); 
+    font-size: 12px; 
+  }
+  .chat-composer { 
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 8px)); 
+    padding-left: calc(6px + env(safe-area-inset-left, 0px));
+    padding-right: calc(6px + env(safe-area-inset-right, 0px));
+  }
   .chat-composer__icon { width: 38px; height: 38px; font-size: 19px; }
   .emoji-picker__grid { max-height: 210px; grid-template-columns: repeat(7, 1fr); }
   .lightbox__stage img { max-width: 96vw; max-height: 82vh; }
+  
+  /* Ensure chat app fills viewport on mobile */
+  .chat-app {
+    height: calc(100dvh - var(--header-h));
+    max-height: calc(100dvh - var(--header-h));
+  }
+  
+  /* iOS Safari specific */
+  @supports (-webkit-touch-callout: none) {
+    .chat-app {
+      height: calc(-webkit-fill-available - var(--header-h));
+      max-height: calc(-webkit-fill-available - var(--header-h));
+    }
+    .chat-composer {
+      padding-bottom: calc(6px + env(safe-area-inset-bottom, 8px));
+    }
+    .chat-jump-latest {
+      bottom: calc(64px + env(safe-area-inset-bottom, 8px));
+    }
+  }
 }
 
 @media (max-width: 380px) {
   .chat-header__actions { gap: 0; }
   .chat-header__icon { width: 34px; font-size: 16px; }
   .chat-composer__send { width: 40px; height: 40px; }
+  
+  /* Ensure minimum composer visibility on very small screens */
+  .chat-composer {
+    min-height: 52px;
+  }
+  .chat-composer__input {
+    min-height: 36px;
+  }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .chat-header {
+    min-height: 48px;
+    padding: 4px 8px;
+  }
+  .chat-body {
+    padding: 8px 10px 8px;
+  }
+  .chat-composer {
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px));
+  }
+  .chat-jump-latest {
+    bottom: calc(50px + env(safe-area-inset-bottom, 0px));
+  }
 }

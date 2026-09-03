@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export default function SearchBar({ placeholder = 'Search Seedwel Hub…', variant = 'regular', defaultValue = '' }) {
+export default function SearchBar({ placeholder = 'Search Xacheus…', variant = 'regular', defaultValue = '' }) {
   const [query, setQuery] = useState(defaultValue || '');
   const navigate = useNavigate();
 

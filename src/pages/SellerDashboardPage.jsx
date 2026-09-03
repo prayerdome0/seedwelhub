@@ -1809,9 +1809,9 @@ function ChannelsTab({ business, stats }) {
     {
       key: 'store',
       icon: '🏪',
-      title: 'Your Seedwel storefront',
+      title: 'Your Xacheus storefront',
       description:
-        'Your own branded page on Seedwel Hub with all your products, services and contact details.',
+        'Your own branded page on Xacheus with all your products, services and contact details.',
       status: 'Live',
       statusTone: 'ok',
       to: `/store/${business.id}`,
@@ -1821,7 +1821,7 @@ function ChannelsTab({ business, stats }) {
     {
       key: 'marketplace',
       icon: '🛒',
-      title: 'Seedwel Marketplace',
+      title: 'Xacheus Marketplace',
       description:
         'Every product you list appears in the public marketplace where buyers browse and search.',
       status: stats.live > 0 ? `${stats.live} product${stats.live === 1 ? '' : 's'} listed` : 'No products yet',
@@ -1835,7 +1835,7 @@ function ChannelsTab({ business, stats }) {
       icon: '📇',
       title: 'Business directory',
       description:
-        'Buyers find you by category and location in the Seedwel business directory.',
+        'Buyers find you by category and location in the Xacheus business directory.',
       status: business.isVerified ? 'Listed · Verified' : 'Listed · Not verified',
       statusTone: business.isVerified ? 'ok' : 'warn',
       to: '/businesses',

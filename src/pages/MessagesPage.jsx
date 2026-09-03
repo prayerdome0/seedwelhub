@@ -49,7 +49,7 @@ export default function MessagesPage() {
     <div className="container page">
       <div className="page__header">
         <h1 className="page__title">Messages</h1>
-        <p className="page__subtitle">Your conversations on Seedwel Hub.</p>
+        <p className="page__subtitle">Your conversations on Xacheus.</p>
       </div>
 
       {loading && <Spinner size="large" />}

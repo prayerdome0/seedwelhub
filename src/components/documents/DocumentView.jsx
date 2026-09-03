@@ -3,7 +3,7 @@ import { formatCurrency, formatDate } from '../../utils/format';
 import { APP_NAME } from '../../utils/constants';
 
 // ---------------------------------------------------------------------------
-// The single, shared visual identity for every Seedwel Hub document.
+// The single, shared visual identity for every Xacheus document.
 //
 // It renders a normalised document (see src/documents/model.js), so a receipt,
 // invoice, quotation, payment confirmation and order confirmation are all

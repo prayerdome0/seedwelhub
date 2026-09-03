@@ -3,7 +3,7 @@ import Button from '../Button';
 import { useToast } from '../../contexts/ToastContext';
 import { generateDocumentPdf } from '../../documents/pdf';
 
-// Shared "Download PDF" action for every Seedwel Hub document.
+// Shared "Download PDF" action for every Xacheus document.
 export default function DownloadPdfButton({
   document: doc,
   label = 'Download PDF',

@@ -52,12 +52,12 @@ export default function VerificationPage() {
     <div className="container page">
       <div className="page__header page__header--center">
         <h1 className="page__title">Document Verification</h1>
-        <p className="page__subtitle">Verify the authenticity of this Seedwel Hub document.</p>
+        <p className="page__subtitle">Verify the authenticity of this Xacheus document.</p>
       </div>
 
       <div className="doc-marksheet" style={{ maxWidth: 620, margin: '0 auto' }}>
         <div className="doc-marksheet__head">
-          <img loading="lazy" decoding="async" src={WATERMARK_LOGO} alt="Seedwel Hub" />
+          <img loading="lazy" decoding="async" src={WATERMARK_LOGO} alt="Xacheus" />
           <span className="doc-marksheet__title">Verification Result</span>
           <StatusBadge status="verified" label="Verified" />
         </div>
@@ -77,7 +77,7 @@ export default function VerificationPage() {
       </div>
 
       <div className="text-center mt-24">
-        <Link to="/" className="btn btn--primary">Go to Seedwel Hub</Link>
+        <Link to="/" className="btn btn--primary">Go to Xacheus</Link>
       </div>
     </div>
   );

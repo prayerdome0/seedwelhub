@@ -292,7 +292,7 @@ export async function sendGroupMessage({
       lastMessageAt: serverTimestamp(),
     });
   } catch (error) {
-    console.warn('[SeedwelHub] Group message sent but group preview was not updated:', error);
+    console.warn('[Xacheus] Group message sent but group preview was not updated:', error);
   }
 
   return message;

@@ -2,8 +2,8 @@
 // The original brand files are kept with their original filenames and simply
 // re-exported under semantic names. Nothing here renames the files on disk.
 
-// "real logo" — the Seedwel mark/icon used for the header, login, registration
-// and all official Seedwel Hub branding areas.
+// "real logo" — the Xacheus mark/icon used for the header, login, registration
+// and all official Xacheus branding areas.
 import realLogo from './Reallogo.png';
 
 // "watermark logo" — the horizontal SEEDWEL HUB wordmark used for the loading

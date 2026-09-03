@@ -12,14 +12,14 @@ const AUTOPLAY_MS = 5000;
 const SLIDES = [
   {
     id: 'grow',
-    eyebrow: 'Seedwel Investment Limited',
+    eyebrow: 'Xacheus',
     title: (
       <>
         The marketplace to <span className="accent">buy, sell, manage</span> &amp; grow
       </>
     ),
     subtitle:
-      'Discover trusted businesses, products and services. Connect, transact and grow your business with Seedwel Hub.',
+      'Discover trusted businesses, products and services. Connect, transact and grow your community with Xacheus.',
     cta: [
       { label: 'Get Started', to: '/register', variant: 'btn--primary' },
       { label: 'Explore Marketplace', to: '/marketplace', variant: 'btn--hero' },
@@ -95,9 +95,9 @@ const SLIDES = [
       </>
     ),
     subtitle:
-      'Join the Seedwel community of buyers, sellers and service providers growing together.',
+      'Join the Xacheus community of buyers, sellers and service providers growing together.',
     cta: [
-      { label: 'Join Seedwel Hub', to: '/register', variant: 'btn--primary' },
+      { label: 'Join Xacheus', to: '/register', variant: 'btn--primary' },
       { label: 'Explore Marketplace', to: '/marketplace', variant: 'btn--hero' },
     ],
     image: coffeeBeans,
@@ -141,7 +141,7 @@ export default function BannerCarousel() {
     <div
       className="banner-carousel"
       aria-roledescription="carousel"
-      aria-label="Seedwel Hub highlights"
+      aria-label="Xacheus highlights"
       onMouseEnter={pause}
       onMouseLeave={resume}
       onFocusCapture={pause}
