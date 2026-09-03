@@ -9,6 +9,7 @@ import ServiceCard from '../components/ServiceCard';
 import { NotFoundState, ErrorState, LoadingState, EmptyState } from '../components/PageState';
 import useDocument from '../hooks/useDocument';
 import useAsync from '../hooks/useAsync';
+import useStartConversation from '../hooks/useStartConversation';
 import { getBusiness } from '../services/businessService';
 import { getProductsByBusiness } from '../services/productService';
 import { getServicesByBusiness } from '../services/serviceService';
@@ -25,6 +26,7 @@ export default function BusinessDetailPage() {
   const [tab, setTab] = useState('products');
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { start: startConversation, starting: startingConversation } = useStartConversation();
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={retry} />;
@@ -38,11 +40,10 @@ export default function BusinessDetailPage() {
 
   const location = [business.city, business.region, business.country].filter(Boolean).join(', ');
   const contact = () => {
-    if (!user) {
-      showToast('Please log in to contact this business.', 'info');
-      return;
-    }
-    showToast('Messaging is being set up. In the meantime, use the contact details below.', 'info');
+    startConversation(business.ownerId, {
+      otherName: business.name || 'Business',
+      otherPhoto: business.logo || '',
+    });
   };
 
   return (
@@ -71,7 +72,9 @@ export default function BusinessDetailPage() {
             </div>
           </div>
           <div className="profile-hero__actions">
-            <button type="button" className="btn btn--outline" onClick={contact}>Contact</button>
+            <button type="button" className="btn btn--outline" onClick={contact} disabled={startingConversation}>
+              {startingConversation ? 'Opening…' : '💬 Contact'}
+            </button>
           </div>
         </div>
       </div>

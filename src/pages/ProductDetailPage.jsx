@@ -7,6 +7,7 @@ import StarRating from '../components/StarRating';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import useDocument from '../hooks/useDocument';
+import useStartConversation from '../hooks/useStartConversation';
 import { getProduct } from '../services/productService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -19,6 +20,7 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1);
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { start: startConversation, starting: startingConversation } = useStartConversation();
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={retry} />;
@@ -46,6 +48,14 @@ export default function ProductDetailPage() {
     }
     showToast('Order feature is being set up. You can contact the seller.', 'info');
     // Where real ordering is implemented, this navigates to a checkout / order flow.
+  };
+
+  const handleMessageSeller = () => {
+    startConversation(product.ownerId, {
+      otherName: sellerName || 'Seller',
+      otherPhoto: product.image || '',
+      product: product.id,
+    });
   };
 
   return (
@@ -154,6 +164,19 @@ export default function ProductDetailPage() {
                   Place Order
                 </Button>
               </div>
+
+              {product.ownerId && (
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    className="btn--block"
+                    loading={startingConversation}
+                    onClick={handleMessageSeller}
+                  >
+                    💬 Message seller
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { docRef, getById, saveDoc, patchDoc, queryOnce, col } from './_base';
+import { docRef, getById, saveDoc, patchDoc, queryOnce, col, subscribeDoc } from './_base';
 import { where } from '../firebase/firestore';
 import { COLLECTIONS, DEFAULT_ROLE, ACCOUNT_STATUS } from '../utils/constants';
 import { serverTimestamp } from '../firebase/firestore';
@@ -49,6 +49,16 @@ export async function ensureUserDocument(uid, { email, name = '', photoURL = '' 
 
 export async function getUser(uid) {
   return getById(COL, uid);
+}
+
+/**
+ * Realtime subscription to the signed-in user's own document. Used by
+ * AuthContext so that changes made to `users/{uid}` in Firestore — most
+ * importantly `role: 'admin'` — are reflected in the app immediately,
+ * without the user having to log out and back in.
+ */
+export function subscribeToUserDoc(uid, { onData, onError } = {}) {
+  return subscribeDoc(COL, uid, { onData, onError });
 }
 
 export async function getUserProfile(uid) {

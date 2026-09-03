@@ -5,6 +5,7 @@ import Badge from '../components/Badge';
 import Button from '../components/Button';
 import { NotFoundState, ErrorState, LoadingState } from '../components/PageState';
 import useDocument from '../hooks/useDocument';
+import useStartConversation from '../hooks/useStartConversation';
 import { getService } from '../services/serviceService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -15,6 +16,7 @@ export default function ServiceDetailPage() {
   const { data: service, loading, error, notFound, retry } = useDocument(getService, id, []);
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { start: startConversation, starting: startingConversation } = useStartConversation();
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={retry} />;
@@ -34,7 +36,14 @@ export default function ServiceDetailPage() {
       showToast('Please log in to request this service.', 'info');
       return;
     }
-    showToast('Service request flow is being set up. You can contact the provider.', 'info');
+    showToast('Service request flow is being set up. You can message the provider.', 'info');
+  };
+
+  const handleMessageProvider = () => {
+    startConversation(service.ownerId, {
+      otherName: service.businessName || service.providerName || 'Provider',
+      otherPhoto: service.image || '',
+    });
   };
 
   return (
@@ -94,6 +103,19 @@ export default function ServiceDetailPage() {
               <div className="mt-16">
                 <Button variant="primary" className="btn--block" onClick={handleRequest}>Request Service</Button>
               </div>
+
+              {service.ownerId && (
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    className="btn--block"
+                    loading={startingConversation}
+                    onClick={handleMessageProvider}
+                  >
+                    💬 Message provider
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </aside>

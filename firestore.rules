@@ -5,45 +5,59 @@ rules_version = '2';
 // Frontend-only checks are NEVER security. These rules are the enforcement
 // layer: they prevent ordinary users from promoting themselves to admin,
 // reading private data, or modifying other people's / businesses' data.
-
-// Helper: is the caller signed in?
-function signedIn() {
-  return request.auth != null;
-}
-
-// Helper: is the caller this document's owner?
-function isOwner(uid) {
-  return signedIn() && request.auth.uid == uid;
-}
-
-// Returns the role of a user from the users collection (if readable).
-function userRole(uid) {
-  return get(/databases/$(database)/documents/users/$(uid)).data.role;
-}
-
-// Is the caller an admin?
-function isAdmin() {
-  return signedIn() && userRole(request.auth.uid) == 'admin';
-}
-
-// Normal users can never be admins. This function also guards writes so only
-// admins can set role = 'admin'.
-function canWriteRole() {
-  return isAdmin();
-}
+//
+// NOTE: helper functions MUST live inside the service/match blocks. Declaring
+// them at the top of the file (outside `service cloud.firestore`) is a syntax
+// error and stops the rules from deploying at all.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------- helpers ----------
+
+    // Is the caller signed in?
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Is the caller this document's owner?
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Returns the role of a user from the users collection. Reads made by rule
+    // evaluation (get/exists) are performed by the rules engine itself, so
+    // they are not blocked by the read rules below.
+    function userRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    // Is the caller an admin?
+    function isAdmin() {
+      return signedIn() && userRole(request.auth.uid) == 'admin';
+    }
+
+    // Does the caller own the business with this id? Used where a document
+    // only carries a businessId (orders, payments, quotations, invoices,
+    // receipts, payment methods, ...).
+    function ownsBusiness(businessId) {
+      return signedIn()
+        && businessId != null
+        && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
     // ---------- users ----------
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow create: if isOwner(uid);
-      // Writes to role/accountStatus are admin-only. Users may update their own
-      // non-sensitive fields but can never set role.
-      allow update: if (isOwner(uid) && !request.resource.data.role.diff(resource.data.role).affectedKeys().hasAny(['role', 'accountStatus']))
-                 || (isAdmin() && request.resource.data.role == resource.data.role)
-                 || (isAdmin() && request.resource.data.role in ['admin', 'user']);
+      // Self sign-up only, and never as an admin.
+      allow create: if isOwner(uid) && request.resource.data.role == 'user';
+      // Owners may update their own non-sensitive fields, but never role or
+      // accountStatus. Admins may update anything (including role).
+      // NOTE: diff() must be called on the whole data map — calling it on a
+      // single (string) field errors out and silently blocks every update.
+      allow update: if isAdmin()
+        || (isOwner(uid)
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'accountStatus']));
       allow delete: if isAdmin();
     }
 
@@ -58,8 +72,8 @@ service cloud.firestore {
     // ---------- businesses ----------
     match /businesses/{businessId} {
       allow read: if true; // business profiles are public
-      allow create: if signedIn();
-      allow update: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if ownsBusiness(businessId) || isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -67,22 +81,22 @@ service cloud.firestore {
     match /businessMembers/{memberId} {
       allow read: if signedIn();
       allow create: if signedIn();
-      allow update: if (resource.data.uid == request.auth.uid) || isAdmin();
+      allow update: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
       allow delete: if isAdmin();
     }
 
     // ---------- products ----------
     match /products/{productId} {
       allow read: if true;
-      allow create: if signedIn();
-      allow update: if (signedIn() && (resource.data.ownerId == request.auth.uid || resource.data.businessId != null)) || isAdmin();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
       allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
 
     // ---------- services ----------
     match /services/{serviceId} {
       allow read: if true;
-      allow create: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update: if (signedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
       allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
@@ -95,33 +109,40 @@ service cloud.firestore {
 
     // ---------- orders ----------
     match /orders/{orderId} {
-      allow read: if signedIn() && (request.auth.uid == resource.data.buyerId || isAdmin());
-      allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid));
+      allow read: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.buyerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
+      allow create: if signedIn() && request.resource.data.buyerId == request.auth.uid;
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.buyerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
       allow delete: if isAdmin();
     }
 
     // ---------- order items ----------
     match /orderItems/{itemId} {
-      allow read: if signedIn() && (request.auth.uid == resource.data.buyerId || isAdmin());
-      allow create: if signedIn();
+      allow read: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.buyerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
+      allow create: if signedIn() && request.resource.data.buyerId == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     // ---------- payments ----------
     match /payments/{paymentId} {
-      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.buyerId || request.auth.uid == resource.data.sellerId));
+      allow read: if isAdmin()
+        || (signedIn() && (request.auth.uid == resource.data.buyerId || ownsBusiness(resource.data.businessId)));
       allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == resource.data.sellerId);
+      allow update: if isAdmin() || (signedIn() && ownsBusiness(resource.data.businessId));
       allow delete: if isAdmin();
     }
 
     // ---------- payment methods / proofs / disputes ----------
     match /paymentMethods/{id} {
-      allow read: if true;
+      allow read: if true; // public checkout instructions
       allow create: if signedIn();
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.businessId != null);
+      allow update, delete: if isAdmin() || ownsBusiness(resource.data.businessId);
     }
     match /paymentProofs/{id} {
       allow read: if isAdmin() || signedIn();
@@ -135,49 +156,63 @@ service cloud.firestore {
     }
 
     // ---------- quotations / invoices / receipts ----------
+    // These documents are deliberately world-readable: they are shared with
+    // customers (who may not have accounts) and carry a public verification
+    // code used by the /verify/:code page. Write access stays restricted to
+    // the customer, the owning business and admins.
     match /quotations/{id} {
-      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.businessId || request.auth.uid == resource.data.customerId));
+      allow read: if true;
       allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.customerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
       allow delete: if isAdmin();
     }
     match /invoices/{id} {
-      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.businessId || request.auth.uid == resource.data.customerId));
+      allow read: if true;
       allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.customerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
       allow delete: if isAdmin();
     }
     match /receipts/{id} {
-      allow read: if isAdmin() || (signedIn() && (request.auth.uid == resource.data.businessId || request.auth.uid == resource.data.customerId));
+      allow read: if true;
       allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.customerId)
+        || (signedIn() && ownsBusiness(resource.data.businessId));
       allow delete: if isAdmin();
     }
 
     // ---------- conversations / messages (private) ----------
     match /conversations/{id} {
       allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if signedIn();
+      allow create: if signedIn() && request.auth.uid in request.resource.data.participantIds;
       allow update: if signedIn() && request.auth.uid in resource.data.participantIds;
       allow delete: if isAdmin();
     }
     match /messages/{id} {
       allow read: if isAdmin() || signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid in resource.data.readBy);
+      allow create: if signedIn() && request.resource.data.senderId == request.auth.uid;
+      // The sender may edit their message; any participant may add themselves
+      // to readBy (read receipts).
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == resource.data.senderId)
+        || (signedIn() && request.auth.uid in request.resource.data.readBy);
       allow delete: if isAdmin() || (signedIn() && request.auth.uid == resource.data.senderId);
     }
 
     // ---------- groups / group members ----------
     match /groups/{id} {
       allow read: if resource.data.visibility == 'public' || isAdmin() || signedIn();
-      allow create: if signedIn();
+      allow create: if signedIn() && request.resource.data.creatorId == request.auth.uid;
       allow update: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
       allow delete: if isAdmin();
     }
     match /groupMembers/{id} {
       allow read: if signedIn();
-      allow create: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow delete: if isAdmin();
     }
@@ -185,6 +220,9 @@ service cloud.firestore {
     // ---------- notifications ----------
     match /notifications/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
+      // The client-side app notifies the other party (order placed, message
+      // received, ...), so any signed-in user may create notifications; only
+      // the recipient can read or update them.
       allow create: if isAdmin() || signedIn();
       allow update: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
       allow delete: if isAdmin();
@@ -201,13 +239,13 @@ service cloud.firestore {
     // ---------- reviews / wishlists / follows ----------
     match /reviews/{id} {
       allow read: if true;
-      allow create: if signedIn();
+      allow create: if signedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isAdmin() || (signedIn() && resource.data.authorId == request.auth.uid);
       allow delete: if isAdmin();
     }
     match /wishlists/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
     }
@@ -217,9 +255,9 @@ service cloud.firestore {
       allow delete: if isAdmin() || (signedIn() && resource.data.followerId == request.auth.uid);
     }
 
-    // ---------- documents (verification) ----------
+    // ---------- documents (verification uploads) ----------
     match /documents/{id} {
-      allow read: if true;
+      allow read: if isAdmin() || signedIn();
       allow create, update: if signedIn();
       allow delete: if isAdmin();
     }
@@ -261,9 +299,9 @@ service cloud.firestore {
     // ---------- inventory / warehouses (sellers) ----------
     match /inventory/{id} {
       allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && resource.data.businessId != null);
-      allow delete: if isAdmin();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
     match /inventoryMovements/{id} {
       allow read: if isAdmin() || signedIn();
@@ -280,18 +318,18 @@ service cloud.firestore {
     match /productVariants/{id} {
       allow read: if true;
       allow create: if signedIn();
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.businessId != null);
+      allow update, delete: if isAdmin() || ownsBusiness(resource.data.businessId);
     }
     match /customers/{id} {
       allow read: if isAdmin() || signedIn();
       allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && resource.data.businessId != null);
+      allow update: if isAdmin() || ownsBusiness(resource.data.businessId);
       allow delete: if isAdmin();
     }
     match /stores/{id} {
       allow read: if true;
       allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && resource.data.businessId != null);
+      allow update: if isAdmin() || ownsBusiness(resource.data.businessId);
       allow delete: if isAdmin();
     }
     match /quotationItems/{id} {
