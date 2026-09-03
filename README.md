@@ -141,6 +141,9 @@ photos remain unmodified.
   caption, emoji/stickers, camera, location sharing, in-conversation search,
   media/starred/pinned panels, mute/block/report, and full group admin
   controls (@mentions, member management, announcements, permissions).
+  Threads open on the unread divider (messages below stay unread until you
+  reach the bottom); reading older messages never yanks you down — a
+  "↓ N new messages" pill returns you to the latest.
 - **Notifications:** FCM web push + in-app notification center with tabs.
 - **Admin:** dashboard, users, businesses, products, orders, payments, reports,
   verification, security.

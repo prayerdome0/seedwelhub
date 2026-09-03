@@ -20,8 +20,11 @@ import {
 //
 // Scroll policy (a strict requirement for Seedwel Hub chat):
 //  - the page body never scrolls; all scrolling happens on this element;
-//  - `scrollToMessage` sets this container's scrollTop directly (never
+//  - `scrollToMessage` positions this container's scrollTop directly (never
 //    scrollIntoView, which would walk up to the page and drag it along);
+//  - opening a thread lands instantly at the first unread message when there
+//    is one, otherwise at the latest message — never a slow glide through
+//    history, and never a silent "everything is read" when it is not;
 //  - when the viewer is at the bottom, new messages keep it pinned there;
 //  - when the viewer is reading older messages, the list does NOT jump —
 //    an onNewMessages callback lets the workspace show a "↓ N new messages"
@@ -67,7 +70,7 @@ const MessageList = forwardRef(function MessageList(
   const bottomRef = useRef(null);
   const atBottomRef = useRef(true);
   const seenIdsRef = useRef(new Set());
-  const firstRenderRef = useRef(true);
+  const placedRef = useRef(false); // initial placement done (with content)
   const prevCountRef = useRef(0);
   const [highlightId, setHighlightId] = useState(null);
   const highlightTimer = useRef(null);
@@ -86,16 +89,23 @@ const MessageList = forwardRef(function MessageList(
   }, []);
 
   /**
-   * Jumps to a message INSIDE this container only. Uses offsetTop arithmetic
-   * against the container — the page itself cannot move.
+   * Jumps to a message INSIDE this container only. The position is computed
+   * from getBoundingClientRect against the container — the page itself cannot
+   * move, and offsetTop is deliberately avoided (the container is not the
+   * offsetParent, so offsetTop would be measured from behind the fixed
+   * header and every jump would land off-target).
    */
-  const scrollToMessage = useCallback((messageId) => {
+  const scrollToMessage = useCallback((messageId, behavior = 'smooth', align = 'center') => {
     const el = scrollRef.current;
     if (!el || !messageId) return false;
     const target = el.querySelector(`[data-message-id="${CSS.escape(String(messageId))}"]`);
     if (!target) return false;
-    const top = target.offsetTop - el.clientHeight / 2 + target.clientHeight / 2;
-    el.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    const topInContainer =
+      target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+    const centered = topInContainer - el.clientHeight / 2 + target.clientHeight / 2;
+    const atTop = topInContainer - 12;
+    const top = align === 'start' ? atTop : centered;
+    el.scrollTo({ top: Math.max(0, top), behavior });
     setHighlightId(String(messageId));
     window.clearTimeout(highlightTimer.current);
     highlightTimer.current = window.setTimeout(() => setHighlightId(null), 1800);
@@ -135,10 +145,39 @@ const MessageList = forwardRef(function MessageList(
     }
     for (const m of allMessages) seenIdsRef.current.add(m.id);
 
-    if (firstRenderRef.current) {
-      firstRenderRef.current = false;
-      requestAnimationFrame(() => scrollToBottom('auto'));
-    } else if (grew) {
+    // ---- initial placement -------------------------------------------------
+    // Wait for real content (the first render usually happens while messages
+    // are still loading), then land INSTANTLY — at the first unread message
+    // when the unread divider applies, otherwise at the latest message.
+    // Where the viewer lands is reported back through onAtBottomChange so the
+    // workspace only marks read receipts once the thread is genuinely at the
+    // bottom (opening on the unread divider must not mark it all as read).
+    if (!placedRef.current) {
+      if (count === 0) {
+        prevCountRef.current = count;
+        return;
+      }
+      placedRef.current = true;
+      const unreadIndex = findUnreadDividerIndex(allMessages, viewerId);
+      const dividerId = unreadIndex >= 0 ? allMessages[unreadIndex]?.id : null;
+      requestAnimationFrame(() => {
+        if (dividerId) {
+          scrollToMessage(dividerId, 'auto', 'start');
+        } else {
+          scrollToBottom('auto');
+        }
+        // Landed at the unread divider ⇒ there are unread messages below ⇒
+        // by definition not at the bottom. Otherwise confirm with the real
+        // scroll geometry.
+        const bottom = dividerId ? false : isAtBottom();
+        atBottomRef.current = bottom;
+        onAtBottomChange && onAtBottomChange(bottom);
+      });
+      prevCountRef.current = count;
+      return;
+    }
+
+    if (grew) {
       const incoming = freshIds.filter((m) => m.senderId !== viewerId);
       if (atBottomRef.current) {
         requestAnimationFrame(() => scrollToBottom('smooth'));

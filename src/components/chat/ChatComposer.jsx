@@ -47,6 +47,7 @@ export default function ChatComposer({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState(null); // {token, start}
+  const [mentionIndex, setMentionIndex] = useState(0); // highlighted suggestion
   const inputRef = useRef(null);
   const attachRef = useRef(null);
   const emojiRef = useRef(null);
@@ -120,6 +121,16 @@ export default function ChatComposer({
       .filter((m) => m.name && m.name.toLowerCase().includes(needle))
       .slice(0, 6);
   }, [mentionQuery, mentionCandidates]);
+
+  // Every new @query starts with the first suggestion highlighted.
+  useEffect(() => {
+    setMentionIndex(0);
+  }, [mentionQuery]);
+
+  // Keep the highlight inside bounds if the candidate list shrinks.
+  useEffect(() => {
+    if (mentionIndex >= mentionMatches.length) setMentionIndex(0);
+  }, [mentionMatches.length, mentionIndex]);
 
   const applyMention = (candidate) => {
     const el = inputRef.current;
@@ -353,12 +364,20 @@ export default function ChatComposer({
               value={text}
               onChange={handleChange}
               onKeyDown={(e) => {
-                if (mentionQuery && mentionMatches.length && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab'].includes(e.key)) {
+                if (mentionQuery && mentionMatches.length) {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const len = mentionMatches.length;
+                    setMentionIndex((i) =>
+                      e.key === 'ArrowDown' ? (i + 1) % len : (i - 1 + len) % len
+                    );
+                    return;
+                  }
                   if (e.key === 'Enter' || e.key === 'Tab') {
                     e.preventDefault();
-                    applyMention(mentionMatches[0]);
+                    applyMention(mentionMatches[Math.min(mentionIndex, mentionMatches.length - 1)]);
+                    return;
                   }
-                  return;
                 }
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -376,14 +395,21 @@ export default function ChatComposer({
             />
 
             {mentionQuery && mentionMatches.length > 0 && (
-              <div className="chat-mentions" role="listbox" aria-label="Mention suggestions">
-                {mentionMatches.map((candidate) => (
+              <div
+                className="chat-mentions"
+                role="listbox"
+                aria-label="Mention suggestions"
+                aria-activedescendant={mentionQuery && mentionMatches.length ? `mention-option-${mentionIndex}` : undefined}
+              >
+                {mentionMatches.map((candidate, index) => (
                   <button
                     key={candidate.uid}
                     type="button"
-                    className="chat-mentions__item"
+                    id={`mention-option-${index}`}
+                    className={`chat-mentions__item${index === mentionIndex ? ' chat-mentions__item--active' : ''}`}
                     role="option"
-                    aria-selected="false"
+                    aria-selected={index === mentionIndex}
+                    onMouseEnter={() => setMentionIndex(index)}
                     onMouseDown={(e) => {
                       e.preventDefault(); // keep input focus
                       applyMention(candidate);

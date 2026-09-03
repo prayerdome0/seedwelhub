@@ -71,9 +71,9 @@ import {
   mediaMessages,
   messagePreview,
   pinnedMessages,
-  presenceCount,
   searchMessages as searchMessagesUtil,
   starredBy,
+  toggleReactionMap,
   typingNames as typingNamesUtil,
 } from '../../utils/chat';
 
@@ -154,6 +154,10 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [newCount, setNewCount] = useState(0);
   const [atBottom, setAtBottom] = useState(true);
+  // True once the message list has performed its initial placement and
+  // reported where the viewer actually landed. Read receipts must not fire on
+  // a stale "at bottom" assumption while the thread is still positioning.
+  const [listSettled, setListSettled] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [call, setCall] = useState(null);
   const [forwardMessageState, setForwardMessageState] = useState(null);
@@ -257,9 +261,11 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
     return () => document.body.classList.remove('chat-workspace-open');
   }, []);
 
-  // Read receipts — only when the viewer is actually at the bottom of the thread.
+  // Read receipts — only once the list has settled AND the viewer is actually
+  // at the bottom of the thread. Opening a conversation on its unread divider
+  // keeps the messages below unread until the viewer scrolls down to them.
   useEffect(() => {
-    if (!viewerId || !atBottom || messagesLoading || notFound) return;
+    if (!viewerId || !listSettled || !atBottom || messagesLoading || notFound) return;
     const unreadIncoming = messages.filter(
       (m) => m.senderId !== viewerId && !(m.readBy || []).includes(viewerId)
     );
@@ -269,22 +275,32 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
       .then(() => poll())
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, atBottom, viewerId, messagesLoading, notFound]);
+  }, [messages, atBottom, viewerId, messagesLoading, notFound, listSettled, mode, id, poll]);
 
-  // Clear transient state when switching threads.
-  useEffect(() => {
+  // ---------------------------------------------------------------------------
+  // Thread switch — reset transient state DURING render (the React-endorsed
+  // "derive state from props" pattern) so the keyed message list never mounts
+  // on the previous thread's content and no stale scroll callback can leak
+  // "new message" counts or read receipts across threads.
+  // ---------------------------------------------------------------------------
+  const threadKey = `${mode}:${id}`;
+  const lastThreadRef = useRef(threadKey);
+  if (lastThreadRef.current !== threadKey) {
+    lastThreadRef.current = threadKey;
     setReplyTo(null);
     setEditing(null);
     setPanel(null);
     setSearchTerm('');
     setNewCount(0);
+    setAtBottom(true);
+    setListSettled(false);
     setPendingMessages([]);
     setAnnouncementHidden(false);
     setMessagesLoading(true);
     setMetaLoading(true);
     setNotFound(false);
     setMessages([]);
-  }, [id, mode]);
+  }
 
   // ============================================================================
   // Derived participants / status.
@@ -596,16 +612,8 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
   const handleReact = useCallback(
     async (message, emoji) => {
       try {
-        // Optimistic toggle: { [emoji]: toggle(utils) }
-        const reactions = message.reactions || {};
-        const current = reactions[emoji] || [];
-        const next = { ...reactions };
-        if (current.includes(viewerId)) {
-          next[emoji] = current.filter((u) => u !== viewerId);
-          if (!next[emoji].length) delete next[emoji];
-        } else {
-          next[emoji] = [...current, viewerId];
-        }
+        // Optimistic toggle through the shared, verified helper.
+        const next = toggleReactionMap(message.reactions, viewerId, emoji);
         setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, reactions: next } : m)));
         await setReactions(message, next);
       } catch (err) {
@@ -969,9 +977,15 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
   }, [direct, id, viewerId]);
 
   // ---- scroll helpers ----------------------------------------------------------
-  const jumpToMessage = useCallback((messageId) => {
-    if (listRef.current) listRef.current.scrollToMessage(messageId);
-  }, []);
+  const jumpToMessage = useCallback(
+    (messageId) => {
+      if (!listRef.current) return;
+      const found = listRef.current.scrollToMessage(messageId);
+      // e.g. a quoted reply whose original is older than the loaded window.
+      if (!found) showToast('That message is not loaded in this view.', 'info');
+    },
+    [showToast]
+  );
 
   const jumpToLatest = useCallback(() => {
     listRef.current?.scrollToBottom('smooth');
@@ -1002,6 +1016,7 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
       { icon: '🖼️', label: 'Media & files', onClick: () => setPanel('media') },
       { icon: '★', label: 'Starred messages', onClick: () => setPanel('starred') },
       { icon: '📌', label: 'Pinned messages', onClick: () => setPanel('pinned') },
+      { icon: '🔔', label: 'Notifications', onClick: () => setPanel('settings') },
       {
         icon: muted ? '🔕' : '🔔',
         label: muted ? 'Unmute conversation' : 'Mute conversation',
@@ -1018,8 +1033,10 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
       );
     } else {
       items.push(
+        { icon: 'ℹ️', label: 'Group info', onClick: () => setPanel('info') },
         { icon: '👥', label: `Members (${members.length})`, onClick: () => setPanel('members') },
         { icon: '➕', label: 'Add members', onClick: () => setPanel('members'), disabled: !viewerIsAdmin },
+        { icon: '🔔', label: 'Group notification settings', onClick: () => setPanel('settings') },
         { icon: '⚙️', label: 'Group settings', onClick: () => setPanel('settings'), disabled: !viewerIsAdmin },
         { icon: '📢', label: 'Group announcement', onClick: () => setPanel('settings'), disabled: !viewerIsAdmin },
         { icon: '🛡️', label: 'Group permissions', onClick: () => setPanel('settings'), disabled: !viewerIsAdmin },
@@ -1170,6 +1187,8 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
               group={meta || {}}
               viewerIsAdmin={viewerIsAdmin}
               saving={busy}
+              muted={muted}
+              onToggleMute={toggleMute}
               onSave={handleSaveGroupSettings}
               onSetAnnouncement={handleSetAnnouncement}
             />
@@ -1275,6 +1294,7 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
 
       <MessageList
         ref={listRef}
+        key={`${mode}-${id || 'new'}`}
         messages={messages}
         pendingMessages={pendingMessages}
         viewerId={viewerId}
@@ -1304,10 +1324,15 @@ export default function ChatWorkspace({ mode = 'direct', id }) {
         onOpenImage={(src, caption) => setLightbox({ src, caption })}
         onAtBottomChange={(bottom) => {
           setAtBottom(bottom);
+          // The first report is the list's initial placement — from here on
+          // the at-bottom state is real and read receipts may fire.
+          setListSettled(true);
           if (bottom) setNewCount(0);
         }}
         onNewMessages={(freshCount, incomingCount) =>
-          setNewCount((n) => n + (incomingCount || freshCount))
+          // Only INCOMING messages count as "new" — the viewer's own sends
+          // while scrolled up must not inflate the pill.
+          setNewCount((n) => n + (incomingCount || 0))
         }
         onMessageVisible={() => setNewCount(0)}
       />
