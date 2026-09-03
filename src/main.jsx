@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import AppIntro from './components/AppIntro';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -20,9 +21,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ErrorBoundary>
+function Root() {
+  const [introDone, setIntroDone] = useState(false);
+
+  return (
+    <>
+      {!introDone && <AppIntro onDone={() => setIntroDone(true)} />}
       <BrowserRouter>
         <ToastProvider>
           <AuthProvider>
@@ -32,6 +36,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </AuthProvider>
         </ToastProvider>
       </BrowserRouter>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <ErrorBoundary>
+      <Root />
     </ErrorBoundary>
   </React.StrictMode>
 );

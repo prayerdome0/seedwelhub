@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { to: '/marketplace', label: 'Marketplace' },
   { to: '/services', label: 'Services' },
   { to: '/businesses', label: 'Businesses' },
+  { to: '/sell', label: 'Sell' },
 ];
 
 export default function Header() {

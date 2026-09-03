@@ -48,7 +48,7 @@ const SLIDES = [
     subtitle:
       'List once and reach everyone. Manage orders, payments and growth from a single dashboard.',
     cta: [
-      { label: 'Start Selling', to: '/register', variant: 'btn--primary' },
+      { label: 'Start Selling', to: '/sell', variant: 'btn--primary' },
       { label: 'Browse Products', to: '/products', variant: 'btn--hero' },
     ],
     shirt: '#eef2f8',
