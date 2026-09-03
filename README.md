@@ -110,6 +110,11 @@ videos, payment proofs, chat images) upload to Cloudinary using the existing
 **unsigned** `seedwel` preset. The returned URL is stored in Firestore — media is
 **never** stored inside Firestore.
 
+The homepage hero also includes a small set of optimized, locally bundled real
+marketplace photographs in `src/assets/banners/`. They are used as presentation
+imagery and carry the official Seedwel mark as a separate overlay, so the source
+photos remain unmodified.
+
 ---
 
 ## Feature Map
@@ -154,7 +159,9 @@ Firebase console (Firestore → Indexes) as prompted by the console, or add them
 - `notifications` — `recipientId ASC, createdAt DESC`
 
 The home page's "featured" sections intentionally avoid compound queries so the
-site loads cleanly even before indexes are created.
+site loads cleanly even before indexes are created. The direct Messages inbox and
+conversation view also use single-field filters and sort their small result sets
+in the client, so a missing conversations/messages index does not block chat.
 
 ---
 

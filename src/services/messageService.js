@@ -1,8 +1,8 @@
 import { createDoc, getById, patchDoc, queryOnce } from './_base';
-import { where, orderBy, limit } from '../firebase/firestore';
+import { serverTimestamp, where } from '../firebase/firestore';
 import { COLLECTIONS } from '../utils/constants';
 import { generateConversationId } from '../utils/ids';
-import { serverTimestamp } from '../firebase/firestore';
+import { sortByTimestamp } from '../utils/format';
 
 const CONVERSATIONS = COLLECTIONS.CONVERSATIONS;
 const MESSAGES = COLLECTIONS.MESSAGES;
@@ -33,21 +33,33 @@ export async function findOrCreateConversation(userA, userB, { product = null } 
   return conversation;
 }
 
-export function getConversationsForUser(uid) {
-  return queryOnce(CONVERSATIONS, [where('participantIds', 'array-contains', uid)], {
-    orderBy: ['lastMessageAt', 'desc'],
-  });
+/**
+ * The old query combined array-contains with orderBy(lastMessageAt), which
+ * requires a composite Firestore index. A missing index surfaced as a generic
+ * network error on the Messages page. Fetch the user's private conversations
+ * with the single-field filter and sort the small result set locally instead.
+ */
+export async function getConversationsForUser(uid) {
+  const conversations = await queryOnce(CONVERSATIONS, [
+    where('participantIds', 'array-contains', uid),
+  ]);
+  return sortByTimestamp(conversations, 'lastMessageAt', 'desc');
 }
 
-export function getMessages(conversationId, count = 200) {
-  return queryOnce(MESSAGES, [where('conversationId', '==', conversationId)], {
-    orderBy: ['createdAt', 'asc'],
-    limit: count,
-  });
+/**
+ * Messages use the same index-free approach. Sorting before slicing keeps the
+ * newest messages visible even when a conversation has more than the display
+ * limit.
+ */
+export async function getMessages(conversationId, count = 200) {
+  const messages = await queryOnce(MESSAGES, [
+    where('conversationId', '==', conversationId),
+  ]);
+  return sortByTimestamp(messages, 'createdAt', 'asc').slice(-count);
 }
 
 export async function sendMessage({ conversationId, senderId, text = '', type = 'text', mediaUrl = '', ...data }) {
-  return createDoc(MESSAGES, {
+  const message = await createDoc(MESSAGES, {
     conversationId,
     senderId,
     text,
@@ -56,6 +68,20 @@ export async function sendMessage({ conversationId, senderId, text = '', type = 
     readBy: [senderId],
     ...data,
   });
+
+  // Keep the inbox preview and ordering in sync with the message just sent.
+  // The message itself has already been created, so an unusual failure while
+  // updating the preview should not make the composer report a false failure.
+  try {
+    await updateConversationLastMessage(
+      conversationId,
+      text.trim() || (type === 'image' ? 'Shared an image' : '')
+    );
+  } catch (error) {
+    console.warn('[SeedwelHub] Message sent but inbox preview was not updated:', error);
+  }
+
+  return message;
 }
 
 export async function markConversationRead(conversationId, uid) {
