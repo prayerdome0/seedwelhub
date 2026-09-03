@@ -4,6 +4,7 @@ import Image from '../components/Image';
 import Badge from '../components/Badge';
 import StarRating from '../components/StarRating';
 import Spinner from '../components/Spinner';
+import ReviewsSection from '../components/ReviewsSection';
 import ProductCard from '../components/ProductCard';
 import ServiceCard from '../components/ServiceCard';
 import { NotFoundState, ErrorState, LoadingState, EmptyState } from '../components/PageState';
@@ -46,6 +47,14 @@ export default function BusinessDetailPage() {
     });
   };
 
+  // Rating shown on the page is the live average of posted reviews, falling
+  // back to the stored aggregate when no reviews exist yet.
+  const reviewList = reviews.data || [];
+  const averageRating = reviewList.length
+    ? reviewList.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviewList.length
+    : Number(business.rating) || 0;
+  const totalReviews = reviewList.length || Number(business.reviewCount) || 0;
+
   return (
     <div className="container page">
       <div className="mt-8 mb-16">
@@ -68,7 +77,7 @@ export default function BusinessDetailPage() {
               {location && <span className="profile-hero__meta">📍 {location}</span>}
             </div>
             <div className="mt-8">
-              <StarRating rating={business.rating} count={business.reviewCount} />
+              <StarRating rating={averageRating} count={totalReviews} />
             </div>
           </div>
           <div className="profile-hero__actions">
@@ -147,19 +156,11 @@ export default function BusinessDetailPage() {
       {tab === 'reviews' && (
         <>
           {reviews.loading && <Spinner size="sm" />}
-          {!reviews.loading && !reviews.data?.length && <EmptyState title="No reviews yet" />}
-          {!reviews.loading && reviews.data?.length > 0 && (
-            <div className="panel">
-              {reviews.data.map((r) => (
-                <div key={r.id} style={{ borderBottom: '1px solid var(--border)', padding: '14px 0' }}>
-                  <div className="flex items-center gap-8">
-                    <strong>{r.authorName || 'Customer'}</strong>
-                    <StarRating rating={r.rating} />
-                  </div>
-                  <p className="text-muted">{r.comment}</p>
-                </div>
-              ))}
-            </div>
+          {!reviews.loading && reviews.error && (
+            <ErrorState message={reviews.error} onRetry={reviews.retry} />
+          )}
+          {!reviews.loading && !reviews.error && (
+            <ReviewsSection businessId={id} reviews={reviewList} onChanged={reviews.retry} />
           )}
         </>
       )}

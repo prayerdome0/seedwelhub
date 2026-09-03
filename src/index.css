@@ -2719,3 +2719,97 @@ a.card:hover {
 .import-steps li { color: var(--text-muted); font-size: 14px; }
 .import-steps strong { color: var(--text); }
 .badge--muted { background: var(--bg-soft); color: var(--text-muted); }
+
+/* ---------- Seller documents (quotations / invoices / receipts) ---------- */
+.line-items {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.line-item {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) 70px 110px 90px 70px 36px;
+  gap: 8px;
+  align-items: center;
+}
+.line-item--head {
+  grid-template-columns: minmax(180px, 2fr) 70px 110px 90px 70px 36px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.line-item--head span:last-child { text-align: center; }
+@media (max-width: 720px) {
+  .line-item,
+  .line-item--head {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .line-item--head { display: none; }
+}
+.panel__total {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--green-soft, #eef7ee);
+  color: var(--navy);
+  font-size: 15px;
+}
+.row-expand td {
+  background: var(--bg-soft);
+  padding: 14px;
+}
+.row-expand__inner {
+  display: grid;
+  grid-template-columns: 200px 220px auto;
+  gap: 14px;
+  align-items: end;
+  max-width: 760px;
+}
+@media (max-width: 720px) {
+  .row-expand__inner { grid-template-columns: 1fr; align-items: stretch; }
+}
+
+/* ---------- Reviews ---------- */
+.review-form-panel { margin-bottom: 16px; }
+.star-picker {
+  display: inline-flex;
+  gap: 4px;
+}
+.star-picker__star {
+  border: none;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  color: #d1d5db;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.12s, transform 0.12s;
+}
+.star-picker__star:hover { transform: scale(1.12); }
+.star-picker__star.is-active { color: #f59e0b; }
+.star-picker__star:disabled { cursor: not-allowed; opacity: 0.6; }
+.review-item {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.review-item__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.review-item__meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.review-item__meta .text-muted { font-size: 12px; }
+.review-item__edit { margin-left: auto; }
+.review-item__comment { margin: 0; color: var(--text); font-size: 14px; }

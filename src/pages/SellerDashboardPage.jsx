@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import useAsync from '../hooks/useAsync';
@@ -8,7 +8,25 @@ import Spinner from '../components/Spinner';
 import StatusBadge from '../components/StatusBadge';
 import { EmptyState, ErrorState } from '../components/PageState';
 import { getBusinessesByOwner, updateBusiness } from '../services/businessService';
-import { getOrdersByBusiness, getOrdersByOwner } from '../services/orderService';
+import {
+  getOrdersByBusiness,
+  getOrdersByOwner,
+  updateOrderStatus,
+  updateOrderPaymentStatus,
+} from '../services/orderService';
+import {
+  getQuotationsByBusiness,
+  createQuotation,
+  updateQuotation,
+} from '../services/quotationService';
+import {
+  getInvoicesByBusiness,
+  createInvoice,
+  updateInvoice,
+  calculateInvoiceTotal,
+} from '../services/invoiceService';
+import { getReceiptsByBusiness, createReceipt } from '../services/receiptService';
+import { createNotification } from '../services/notificationService';
 import {
   getProductsByBusiness,
   createProduct,
@@ -33,8 +51,11 @@ import {
   DEFAULT_CURRENCY,
   currencyCode,
   currencyLabel,
+  ORDER_STATUS_FLOW,
+  PAYMENT_METHODS,
+  PAYMENT_STATUS,
 } from '../utils/constants';
-import { formatCurrency, formatNumber, relativeTime } from '../utils/format';
+import { formatCurrency, formatDate, formatNumber, relativeTime, slugify } from '../utils/format';
 import {
   parseCsv,
   readFileAsText,
@@ -49,11 +70,17 @@ import {
 const TABS = [
   { id: 'channels', label: 'Where you sell' },
   { id: 'orders', label: 'Orders' },
+  { id: 'quotations', label: 'Quotations' },
+  { id: 'invoices', label: 'Invoices' },
+  { id: 'receipts', label: 'Receipts' },
   { id: 'products', label: 'Products' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'import', label: 'Bulk import (CSV)' },
   { id: 'currency', label: 'Currency' },
 ];
+
+const QUOTATION_STATUSES = ['draft', 'sent', 'accepted', 'declined', 'invoiced'];
+const INVOICE_STATUSES = ['unpaid', 'partially_paid', 'paid', 'overdue', 'cancelled'];
 
 function emptyProduct(currency = DEFAULT_CURRENCY) {
   return {
@@ -89,12 +116,122 @@ function num(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function emptyLineItem() {
+  return { name: '', quantity: '', unitPrice: '', discount: '', tax: '' };
+}
+
+function emptyQuotation(currency = DEFAULT_CURRENCY) {
+  return {
+    customerId: '',
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    validUntil: '',
+    notes: '',
+    currency: currencyCode(currency),
+    items: [emptyLineItem()],
+  };
+}
+
+function emptyInvoice(currency = DEFAULT_CURRENCY) {
+  return {
+    customerId: '',
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    dueDate: '',
+    notes: '',
+    currency: currencyCode(currency),
+    items: [emptyLineItem()],
+  };
+}
+
+function emptyReceipt(currency = DEFAULT_CURRENCY) {
+  return {
+    customerId: '',
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    amount: '',
+    currency: currencyCode(currency),
+    paymentMethod: 'mobile_money',
+    paymentReference: '',
+    orderId: '',
+    invoiceId: '',
+    notes: '',
+  };
+}
+
+function deriveCustomerId({ customerId, customerEmail, customerName }) {
+  if (customerId && customerId.trim()) return customerId.trim();
+  if (customerEmail && customerEmail.trim()) return customerEmail.trim().toLowerCase();
+  return `guest-${slugify(customerName) || 'customer'}`;
+}
+
+// Shared customer fields for the quotation / invoice / receipt forms.
+function CustomerFields({ form, set }) {
+  return (
+    <>
+      <div className="form__row">
+        <div className="form__group">
+          <label className="form__label" htmlFor="c-name">Customer name *</label>
+          <input
+            id="c-name"
+            className="form__input"
+            value={form.customerName}
+            onChange={set('customerName')}
+            placeholder="e.g. Jane Mwansa"
+          />
+        </div>
+        <div className="form__group">
+          <label className="form__label" htmlFor="c-phone">Customer phone</label>
+          <input
+            id="c-phone"
+            className="form__input"
+            value={form.customerPhone}
+            onChange={set('customerPhone')}
+            placeholder="+260 …"
+          />
+        </div>
+      </div>
+      <div className="form__group">
+        <label className="form__label" htmlFor="c-email">Customer email</label>
+        <input
+          id="c-email"
+          type="email"
+          className="form__input"
+          value={form.customerEmail}
+          onChange={set('customerEmail')}
+          placeholder="customer@example.com"
+        />
+      </div>
+    </>
+  );
+}
+
 export default function SellerDashboardPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const [tab, setTab] = useState('channels');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs = TABS.map((t) => t.id);
+  const tabParam = searchParams.get('tab');
+  const [tab, setTab] = useState(
+    validTabs.includes(tabParam) ? tabParam : 'channels'
+  );
   const [businessId, setBusinessId] = useState('');
+
+  // Keep the active tab in the URL so deep links (e.g. from the "Where you
+  // sell" channels) can jump straight to a tab.
+  useEffect(() => {
+    if (validTabs.includes(tabParam)) setTab(tabParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
+
+  const changeTab = (next) => {
+    setTab(next);
+    setSearchParams(next === 'channels' ? {} : { tab: next }, { replace: true });
+  };
 
   const businesses = useAsync(
     () => (user ? getBusinessesByOwner(user.uid) : Promise.resolve([])),
@@ -210,7 +347,7 @@ export default function SellerDashboardPage() {
             key={t.id}
             type="button"
             className={`tabs__tab ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => changeTab(t.id)}
           >
             {t.label}
           </button>
@@ -219,6 +356,9 @@ export default function SellerDashboardPage() {
 
       {tab === 'channels' && <ChannelsTab business={business} stats={stats} />}
       {tab === 'orders' && <OrdersTab user={user} business={business} />}
+      {tab === 'quotations' && <QuotationsTab business={business} />}
+      {tab === 'invoices' && <InvoicesTab business={business} />}
+      {tab === 'receipts' && <ReceiptsTab business={business} />}
       {tab === 'products' && (
         <ProductsTab
           user={user}
@@ -430,6 +570,7 @@ function StatCard({ label, value, hint }) {
 /* ------------------------------------------------------------------ orders */
 
 function OrdersTab({ user, business }) {
+  const { showToast } = useToast();
   const businessOrders = useAsync(
     () => (business?.id ? getOrdersByBusiness(business.id, 100) : Promise.resolve([])),
     [business?.id]
@@ -450,8 +591,60 @@ function OrdersTab({ user, business }) {
     ),
   ].filter((order, index, all) => all.findIndex((item) => item.id === order.id) === index);
 
+  const refresh = () => {
+    businessOrders.retry();
+    ownerOrders.retry();
+  };
+
+  // The seller can only advance orders that belong to this business (the
+  // Firestore rules allow writes via the business owner).
+  const canManage = (order) => Boolean(order.businessId) && order.businessId === business.id;
+
+  const notifyBuyer = (order, title, message) => {
+    if (!order.buyerId) return;
+    createNotification({
+      recipientId: order.buyerId,
+      title,
+      message,
+      type: 'orders',
+      related: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        businessId: business.id,
+        businessName: business.name,
+        buyerId: order.buyerId,
+      },
+    }).catch(() => {});
+  };
+
+  const updateStatus = async (order, status) => {
+    try {
+      await updateOrderStatus(order.id, status);
+      refresh();
+      showToast(`${order.orderNumber} → ${status}.`, 'success');
+      notifyBuyer(order, 'Order update 🚚', `Your order ${order.orderNumber} is now "${status}".`);
+    } catch (err) {
+      showToast(err.message || 'Could not update the order status.', 'error');
+    }
+  };
+
+  const updatePayment = async (order, paymentStatus) => {
+    try {
+      await updateOrderPaymentStatus(order.id, paymentStatus);
+      refresh();
+      showToast(`${order.orderNumber} payment → ${paymentStatus}.`, 'success');
+      notifyBuyer(
+        order,
+        'Payment update 💳',
+        `The payment for your order ${order.orderNumber} was marked ${paymentStatus}.`
+      );
+    } catch (err) {
+      showToast(err.message || 'Could not update the payment status.', 'error');
+    }
+  };
+
   if (loading) return <Spinner size="large" />;
-  if (error) return <ErrorState message={error} onRetry={() => { businessOrders.retry(); ownerOrders.retry(); }} />;
+  if (error) return <ErrorState message={error} onRetry={refresh} />;
   if (!combined.length) {
     return (
       <div className="panel">
@@ -480,16 +673,899 @@ function OrdersTab({ user, business }) {
                 <td><Link to={`/order/${order.id}`} className="table__link">{order.orderNumber}</Link></td>
                 <td>{order.buyerName || '—'}</td>
                 <td>{formatCurrency(order.total, order.currency)}</td>
-                <td><StatusBadge status={order.paymentStatus} /></td>
-                <td><StatusBadge status={order.status} /></td>
+                <td>
+                  {canManage(order) ? (
+                    <select
+                      className="form__select"
+                      value={order.paymentStatus || PAYMENT_STATUS.PENDING}
+                      onChange={(e) => updatePayment(order, e.target.value)}
+                      aria-label={`Payment status for ${order.orderNumber}`}
+                    >
+                      <option value={PAYMENT_STATUS.PENDING}>Pending</option>
+                      <option value={PAYMENT_STATUS.CONFIRMED}>Confirmed</option>
+                      <option value={PAYMENT_STATUS.REJECTED}>Rejected</option>
+                    </select>
+                  ) : (
+                    <StatusBadge status={order.paymentStatus} />
+                  )}
+                </td>
+                <td>
+                  {canManage(order) ? (
+                    <select
+                      className="form__select"
+                      value={order.status || ORDER_STATUS_FLOW[0]}
+                      onChange={(e) => updateStatus(order, e.target.value)}
+                      aria-label={`Status for ${order.orderNumber}`}
+                    >
+                      {ORDER_STATUS_FLOW.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <StatusBadge status={order.status} />
+                  )}
+                </td>
                 <td>{relativeTime(order.createdAt)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-muted mt-16">Showing {combined.length} order(s).</p>
+      <p className="text-muted mt-16">
+        Showing {combined.length} order(s). Use the dropdowns to update an order's status and payment.
+      </p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------- line items editor */
+
+function LineItemsEditor({ items, onChange, currency, mode = 'quotation' }) {
+  const update = (index, field, value) => {
+    onChange(items.map((it, i) => (i === index ? { ...it, [field]: value } : it)));
+  };
+  const add = () => onChange([...(items || []), emptyLineItem()]);
+  const remove = (index) => onChange((items || []).filter((_, i) => i !== index));
+
+  const list = items || [];
+
+  return (
+    <div className="form__group">
+      <div className="dash-toolbar">
+        <label className="form__label">Items *</label>
+        <Button type="button" variant="ghost" size="sm" onClick={add}>+ Add item</Button>
+      </div>
+
+      {list.length === 0 && (
+        <p className="text-muted">No items yet — add the products or services you are quoting.</p>
+      )}
+
+      {list.length > 0 && (
+        <div className="line-items">
+          <div className="line-item line-item--head">
+            <span>Item</span>
+            <span>Qty</span>
+            <span>Unit price</span>
+            {mode === 'invoice' && <span>Discount</span>}
+            {mode === 'invoice' && <span>Tax %</span>}
+            <span />
+          </div>
+          {list.map((it, i) => (
+            <div className="line-item" key={i}>
+              <input
+                className="form__input"
+                value={it.name}
+                onChange={(e) => update(i, 'name', e.target.value)}
+                placeholder="Item name / description"
+                aria-label={`Item ${i + 1} name`}
+              />
+              <input
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={it.quantity}
+                onChange={(e) => update(i, 'quantity', e.target.value)}
+                placeholder="Qty"
+                aria-label={`Item ${i + 1} quantity`}
+              />
+              <input
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={it.unitPrice}
+                onChange={(e) => update(i, 'unitPrice', e.target.value)}
+                placeholder="Unit price"
+                aria-label={`Item ${i + 1} unit price`}
+              />
+              {mode === 'invoice' && (
+                <input
+                  className="form__input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={it.discount}
+                  onChange={(e) => update(i, 'discount', e.target.value)}
+                  placeholder="Discount"
+                  aria-label={`Item ${i + 1} discount`}
+                />
+              )}
+              {mode === 'invoice' && (
+                <input
+                  className="form__input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={it.tax}
+                  onChange={(e) => update(i, 'tax', e.target.value)}
+                  placeholder="Tax %"
+                  aria-label={`Item ${i + 1} tax percent`}
+                />
+              )}
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={() => remove(i)}
+                aria-label={`Remove item ${i + 1}`}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="form__hint">Currency: <strong>{currencyCode(currency)}</strong></p>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- quotations */
+
+function QuotationsTab({ business }) {
+  const { showToast } = useToast();
+  const quotations = useAsync(
+    () => (business?.id ? getQuotationsByBusiness(business.id) : Promise.resolve([])),
+    [business?.id]
+  );
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(() => emptyQuotation(business?.currency));
+
+  if (!business) return null;
+
+  const list = quotations.data || [];
+  const items = form.items || [];
+  const total = items.reduce((sum, it) => sum + num(it.unitPrice) * num(it.quantity), 0);
+
+  const set = (key) => (event) =>
+    setForm((prev) => ({ ...prev, [key]: event.target?.value ?? event }));
+
+  const reset = () => {
+    setForm(emptyQuotation(business.currency));
+    setShowForm(false);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!form.customerName.trim()) {
+      showToast('Please enter the customer name.', 'error');
+      return;
+    }
+    const cleanItems = items
+      .map((it) => ({
+        name: String(it.name || '').trim(),
+        quantity: num(it.quantity),
+        unitPrice: num(it.unitPrice),
+      }))
+      .filter((it) => it.name);
+    if (!cleanItems.length) {
+      showToast('Add at least one item to the quotation.', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = await createQuotation({
+        businessId: business.id,
+        businessName: business.name,
+        customerId: deriveCustomerId(form),
+        customerName: form.customerName.trim(),
+        customerEmail: form.customerEmail.trim(),
+        customerPhone: form.customerPhone.trim(),
+        items: cleanItems,
+        total,
+        currency: currencyCode(form.currency || business.currency),
+        validUntil: form.validUntil || null,
+        notes: form.notes.trim(),
+      });
+      showToast(`Quotation ${created.quotationNumber} created.`, 'success');
+      reset();
+      quotations.retry();
+    } catch (err) {
+      showToast(err.message || 'Could not create the quotation.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setStatus = async (q, status) => {
+    try {
+      await updateQuotation(q.id, { status });
+      showToast(`${q.quotationNumber} → ${status}.`, 'success');
+      quotations.retry();
+    } catch (err) {
+      showToast(err.message || 'Could not update the quotation.', 'error');
+    }
+  };
+
+  const convertToInvoice = async (q) => {
+    const qItems = q.items || [];
+    if (!qItems.length) {
+      showToast('This quotation has no items to invoice.', 'error');
+      return;
+    }
+    try {
+      const invoice = await createInvoice({
+        businessId: business.id,
+        businessName: business.name,
+        customerId: q.customerId,
+        customerName: q.customerName,
+        customerEmail: q.customerEmail,
+        customerPhone: q.customerPhone,
+        currency: q.currency,
+        notes: q.notes,
+        quotationId: q.id,
+        items: qItems.map((it) => ({
+          name: it.name,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          discount: 0,
+          tax: 0,
+        })),
+      });
+      await updateQuotation(q.id, { status: 'invoiced', invoiceId: invoice.id });
+      showToast(`Invoice ${invoice.invoiceNumber} created from the quotation.`, 'success');
+      quotations.retry();
+    } catch (err) {
+      showToast(err.message || 'Could not create the invoice.', 'error');
+    }
+  };
+
+  return (
+    <>
+      <div className="panel dash-toolbar mt-16">
+        <div>
+          <h2 className="panel__title">Quotations</h2>
+          <p className="text-muted">
+            Send a priced quote to a customer, then convert it to an invoice when they accept.
+          </p>
+        </div>
+        <Button variant={showForm ? 'ghost' : 'primary'} onClick={() => (showForm ? reset() : setShowForm(true))}>
+          {showForm ? 'Cancel' : '+ New quotation'}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form className="panel mt-16" onSubmit={submit}>
+          <h3 className="panel__title">New quotation</h3>
+          <CustomerFields form={form} set={set} />
+          <div className="form__row mt-16">
+            <div className="form__group">
+              <label className="form__label" htmlFor="q-currency">Currency</label>
+              <select id="q-currency" className="form__select" value={form.currency} onChange={set('currency')}>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency.code} value={currency.code}>{currency.code}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="q-valid">Valid until</label>
+              <input
+                id="q-valid"
+                type="date"
+                className="form__input"
+                value={form.validUntil}
+                onChange={set('validUntil')}
+              />
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <LineItemsEditor
+              items={items}
+              onChange={(next) => setForm((prev) => ({ ...prev, items: next }))}
+              currency={form.currency}
+              mode="quotation"
+            />
+          </div>
+
+          <div className="panel__total">
+            Total: <strong>{formatCurrency(total, currencyCode(form.currency || business.currency))}</strong>
+          </div>
+
+          <div className="form__group mt-16">
+            <label className="form__label" htmlFor="q-notes">Notes</label>
+            <textarea
+              id="q-notes"
+              className="form__textarea"
+              value={form.notes}
+              onChange={set('notes')}
+              placeholder="Terms, delivery details, validity…"
+            />
+          </div>
+
+          <div className="dash-actions">
+            <Button type="submit" variant="primary" loading={saving}>Create quotation</Button>
+            <Button type="button" variant="ghost" onClick={reset}>Cancel</Button>
+          </div>
+        </form>
+      )}
+
+      <div className="mt-16">
+        {quotations.loading && <Spinner size="large" label="Loading quotations…" />}
+        {quotations.error && <ErrorState message={quotations.error} onRetry={quotations.retry} />}
+        {!quotations.loading && !quotations.error && list.length === 0 && (
+          <div className="panel">
+            <EmptyState
+              title="No quotations yet"
+              message="Create a quotation to price a sale for a customer without an order."
+              action={<Button variant="primary" onClick={() => setShowForm(true)}>+ New quotation</Button>}
+            />
+          </div>
+        )}
+        {!quotations.loading && list.length > 0 && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Customer</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((q) => (
+                  <tr key={q.id}>
+                    <td><Link to={`/quotation/${q.id}`} className="table__link">{q.quotationNumber}</Link></td>
+                    <td>{q.customerName || '—'}</td>
+                    <td>{formatCurrency(q.total, q.currency)}</td>
+                    <td>
+                      <select
+                        className="form__select"
+                        value={q.status || 'draft'}
+                        onChange={(e) => setStatus(q, e.target.value)}
+                        aria-label={`Status for ${q.quotationNumber}`}
+                      >
+                        {QUOTATION_STATUSES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>{formatDate(q.createdAt)}</td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => convertToInvoice(q)}
+                        >
+                          Create invoice
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ----------------------------------------------------------------- invoices */
+
+function InvoicesTab({ business }) {
+  const { showToast } = useToast();
+  const invoices = useAsync(
+    () => (business?.id ? getInvoicesByBusiness(business.id) : Promise.resolve([])),
+    [business?.id]
+  );
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(() => emptyInvoice(business?.currency));
+  const [payingId, setPayingId] = useState(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('mobile_money');
+
+  if (!business) return null;
+
+  const list = invoices.data || [];
+  const items = form.items || [];
+  const total = calculateInvoiceTotal(
+    items.map((it) => ({
+      name: it.name,
+      quantity: num(it.quantity),
+      unitPrice: num(it.unitPrice),
+      discount: num(it.discount),
+      tax: num(it.tax),
+    }))
+  );
+
+  const set = (key) => (event) =>
+    setForm((prev) => ({ ...prev, [key]: event.target?.value ?? event }));
+
+  const reset = () => {
+    setForm(emptyInvoice(business.currency));
+    setShowForm(false);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!form.customerName.trim()) {
+      showToast('Please enter the customer name.', 'error');
+      return;
+    }
+    const cleanItems = items
+      .map((it) => ({
+        name: String(it.name || '').trim(),
+        quantity: num(it.quantity),
+        unitPrice: num(it.unitPrice),
+        discount: num(it.discount),
+        tax: num(it.tax),
+      }))
+      .filter((it) => it.name);
+    if (!cleanItems.length) {
+      showToast('Add at least one item to the invoice.', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = await createInvoice({
+        businessId: business.id,
+        businessName: business.name,
+        customerId: deriveCustomerId(form),
+        customerName: form.customerName.trim(),
+        customerEmail: form.customerEmail.trim(),
+        customerPhone: form.customerPhone.trim(),
+        currency: currencyCode(form.currency || business.currency),
+        dueDate: form.dueDate || null,
+        notes: form.notes.trim(),
+        items: cleanItems,
+      });
+      showToast(`Invoice ${created.invoiceNumber} created.`, 'success');
+      reset();
+      invoices.retry();
+    } catch (err) {
+      showToast(err.message || 'Could not create the invoice.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setStatus = async (inv, status) => {
+    try {
+      await updateInvoice(inv.id, { status });
+      showToast(`${inv.invoiceNumber} → ${status}.`, 'success');
+      invoices.retry();
+    } catch (err) {
+      showToast(err.message || 'Could not update the invoice.', 'error');
+    }
+  };
+
+  const recordPayment = async (inv) => {
+    const amount = num(payAmount);
+    if (amount <= 0) {
+      showToast('Enter a valid payment amount.', 'error');
+      return;
+    }
+    if (amount > Number(inv.balance || 0) + 0.001) {
+      showToast('Payment cannot exceed the outstanding balance.', 'error');
+      return;
+    }
+    try {
+      const amountPaid = (Number(inv.amountPaid) || 0) + amount;
+      const balance = Math.max(0, (Number(inv.total) || 0) - amountPaid);
+      const status = balance <= 0 ? 'paid' : 'partially_paid';
+      await updateInvoice(inv.id, { amountPaid, balance, status, lastPaymentMethod: payMethod });
+      showToast(`Payment of ${formatCurrency(amount, inv.currency)} recorded.`, 'success');
+      setPayingId(null);
+      setPayAmount('');
+      invoices.retry();
+    } catch (err) {
+      showToast(err.message || 'Could not record the payment.', 'error');
+    }
+  };
+
+  return (
+    <>
+      <div className="panel dash-toolbar mt-16">
+        <div>
+          <h2 className="panel__title">Invoices</h2>
+          <p className="text-muted">Bill a customer and record payments until the balance is cleared.</p>
+        </div>
+        <Button variant={showForm ? 'ghost' : 'primary'} onClick={() => (showForm ? reset() : setShowForm(true))}>
+          {showForm ? 'Cancel' : '+ New invoice'}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form className="panel mt-16" onSubmit={submit}>
+          <h3 className="panel__title">New invoice</h3>
+          <CustomerFields form={form} set={set} />
+          <div className="form__row mt-16">
+            <div className="form__group">
+              <label className="form__label" htmlFor="i-currency">Currency</label>
+              <select id="i-currency" className="form__select" value={form.currency} onChange={set('currency')}>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency.code} value={currency.code}>{currency.code}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="i-due">Due date</label>
+              <input id="i-due" type="date" className="form__input" value={form.dueDate} onChange={set('dueDate')} />
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <LineItemsEditor
+              items={items}
+              onChange={(next) => setForm((prev) => ({ ...prev, items: next }))}
+              currency={form.currency}
+              mode="invoice"
+            />
+          </div>
+
+          <div className="panel__total">
+            Total: <strong>{formatCurrency(total, currencyCode(form.currency || business.currency))}</strong>
+          </div>
+
+          <div className="form__group mt-16">
+            <label className="form__label" htmlFor="i-notes">Notes</label>
+            <textarea
+              id="i-notes"
+              className="form__textarea"
+              value={form.notes}
+              onChange={set('notes')}
+              placeholder="Payment terms, bank details…"
+            />
+          </div>
+
+          <div className="dash-actions">
+            <Button type="submit" variant="primary" loading={saving}>Create invoice</Button>
+            <Button type="button" variant="ghost" onClick={reset}>Cancel</Button>
+          </div>
+        </form>
+      )}
+
+      <div className="mt-16">
+        {invoices.loading && <Spinner size="large" label="Loading invoices…" />}
+        {invoices.error && <ErrorState message={invoices.error} onRetry={invoices.retry} />}
+        {!invoices.loading && !invoices.error && list.length === 0 && (
+          <div className="panel">
+            <EmptyState
+              title="No invoices yet"
+              message="Create an invoice to bill a customer, then record payments against it."
+              action={<Button variant="primary" onClick={() => setShowForm(true)}>+ New invoice</Button>}
+            />
+          </div>
+        )}
+        {!invoices.loading && list.length > 0 && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Customer</th>
+                  <th>Total</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((inv) => (
+                  <Fragment key={inv.id}>
+                    <tr>
+                      <td><Link to={`/invoice/${inv.id}`} className="table__link">{inv.invoiceNumber}</Link></td>
+                      <td>{inv.customerName || '—'}</td>
+                      <td>{formatCurrency(inv.total, inv.currency)}</td>
+                      <td>{formatCurrency(inv.balance, inv.currency)}</td>
+                      <td>
+                        <select
+                          className="form__select"
+                          value={inv.status || 'unpaid'}
+                          onChange={(e) => setStatus(inv, e.target.value)}
+                          aria-label={`Status for ${inv.invoiceNumber}`}
+                        >
+                          {INVOICE_STATUSES.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>{formatDate(inv.createdAt)}</td>
+                      <td>
+                        <div className="row-actions">
+                          <button
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={() => {
+                              setPayingId(payingId === inv.id ? null : inv.id);
+                              setPayAmount('');
+                              setPayMethod('mobile_money');
+                            }}
+                          >
+                            Record payment
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {payingId === inv.id && (
+                      <tr className="row-expand">
+                        <td colSpan={7}>
+                          <div className="row-expand__inner">
+                            <div className="form__group">
+                              <label className="form__label" htmlFor="pay-amount">Amount received</label>
+                              <input
+                                id="pay-amount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="form__input"
+                                value={payAmount}
+                                onChange={(e) => setPayAmount(e.target.value)}
+                                placeholder={`Outstanding: ${formatCurrency(inv.balance, inv.currency)}`}
+                              />
+                            </div>
+                            <div className="form__group">
+                              <label className="form__label" htmlFor="pay-method">Payment method</label>
+                              <select
+                                id="pay-method"
+                                className="form__select"
+                                value={payMethod}
+                                onChange={(e) => setPayMethod(e.target.value)}
+                              >
+                                {PAYMENT_METHODS.map((m) => (
+                                  <option key={m.id} value={m.id}>{m.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="dash-actions">
+                              <Button variant="primary" size="sm" onClick={() => recordPayment(inv)}>
+                                Save payment
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setPayingId(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ----------------------------------------------------------------- receipts */
+
+function ReceiptsTab({ business }) {
+  const { showToast } = useToast();
+  const receipts = useAsync(
+    () => (business?.id ? getReceiptsByBusiness(business.id) : Promise.resolve([])),
+    [business?.id]
+  );
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(() => emptyReceipt(business?.currency));
+
+  if (!business) return null;
+
+  const list = receipts.data || [];
+
+  const set = (key) => (event) =>
+    setForm((prev) => ({ ...prev, [key]: event.target?.value ?? event }));
+
+  const reset = () => {
+    setForm(emptyReceipt(business.currency));
+    setShowForm(false);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!form.customerName.trim()) {
+      showToast('Please enter the customer name.', 'error');
+      return;
+    }
+    const amount = num(form.amount);
+    if (amount <= 0) {
+      showToast('Please enter a valid amount.', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = await createReceipt({
+        businessId: business.id,
+        businessName: business.name,
+        customerId: deriveCustomerId(form),
+        customerName: form.customerName.trim(),
+        customerEmail: form.customerEmail.trim(),
+        customerPhone: form.customerPhone.trim(),
+        amount,
+        currency: currencyCode(form.currency || business.currency),
+        paymentMethod: form.paymentMethod || 'mobile_money',
+        paymentReference: form.paymentReference.trim(),
+        orderId: form.orderId.trim() || null,
+        invoiceId: form.invoiceId.trim() || null,
+        notes: form.notes.trim(),
+      });
+      showToast(`Receipt ${created.receiptNumber} issued.`, 'success');
+      reset();
+      receipts.retry();
+    } catch (err) {
+      showToast(err.message || 'Could not issue the receipt.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="panel dash-toolbar mt-16">
+        <div>
+          <h2 className="panel__title">Receipts</h2>
+          <p className="text-muted">Issue a receipt the moment a customer pays — cash, mobile money or bank.</p>
+        </div>
+        <Button variant={showForm ? 'ghost' : 'primary'} onClick={() => (showForm ? reset() : setShowForm(true))}>
+          {showForm ? 'Cancel' : '+ Issue receipt'}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form className="panel mt-16" onSubmit={submit}>
+          <h3 className="panel__title">New receipt</h3>
+          <CustomerFields form={form} set={set} />
+
+          <div className="form__row mt-16">
+            <div className="form__group">
+              <label className="form__label" htmlFor="r-amount">Amount received *</label>
+              <input
+                id="r-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                className="form__input"
+                value={form.amount}
+                onChange={set('amount')}
+                placeholder="0.00"
+              />
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="r-currency">Currency</label>
+              <select id="r-currency" className="form__select" value={form.currency} onChange={set('currency')}>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency.code} value={currency.code}>{currency.code}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="r-method">Payment method</label>
+              <select id="r-method" className="form__select" value={form.paymentMethod} onChange={set('paymentMethod')}>
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="r-ref">Payment reference</label>
+              <input
+                id="r-ref"
+                className="form__input"
+                value={form.paymentReference}
+                onChange={set('paymentReference')}
+                placeholder="e.g. MTN MoMo transaction ID"
+              />
+            </div>
+          </div>
+
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="r-order">Order number (optional)</label>
+              <input
+                id="r-order"
+                className="form__input"
+                value={form.orderId}
+                onChange={set('orderId')}
+                placeholder="e.g. ORD-2026…"
+              />
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="r-invoice">Invoice number (optional)</label>
+              <input
+                id="r-invoice"
+                className="form__input"
+                value={form.invoiceId}
+                onChange={set('invoiceId')}
+                placeholder="e.g. INV-2026…"
+              />
+            </div>
+          </div>
+
+          <div className="form__group mt-16">
+            <label className="form__label" htmlFor="r-notes">Notes</label>
+            <textarea
+              id="r-notes"
+              className="form__textarea"
+              value={form.notes}
+              onChange={set('notes')}
+              placeholder="What was the payment for?"
+            />
+          </div>
+
+          <div className="dash-actions">
+            <Button type="submit" variant="primary" loading={saving}>Issue receipt</Button>
+            <Button type="button" variant="ghost" onClick={reset}>Cancel</Button>
+          </div>
+        </form>
+      )}
+
+      <div className="mt-16">
+        {receipts.loading && <Spinner size="large" label="Loading receipts…" />}
+        {receipts.error && <ErrorState message={receipts.error} onRetry={receipts.retry} />}
+        {!receipts.loading && !receipts.error && list.length === 0 && (
+          <div className="panel">
+            <EmptyState
+              title="No receipts yet"
+              message="Issue a receipt whenever you receive a payment from a customer."
+              action={<Button variant="primary" onClick={() => setShowForm(true)}>+ Issue receipt</Button>}
+            />
+          </div>
+        )}
+        {!receipts.loading && list.length > 0 && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Customer</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((r) => (
+                  <tr key={r.id}>
+                    <td><Link to={`/receipt/${r.id}`} className="table__link">{r.receiptNumber}</Link></td>
+                    <td>{r.customerName || '—'}</td>
+                    <td>{formatCurrency(r.amount, r.currency)}</td>
+                    <td>{r.paymentMethod || '—'}</td>
+                    <td><StatusBadge status={r.status} /></td>
+                    <td>{formatDate(r.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -552,13 +1628,13 @@ function ChannelsTab({ business, stats }) {
     {
       key: 'quotes',
       icon: '🧾',
-      title: 'Quotations & invoices',
+      title: 'Quotations, invoices & receipts',
       description:
-        'Sell directly to a customer: send a quotation, convert it to an invoice and issue a receipt.',
+        'Sell directly to a customer: send a quotation, convert it to an invoice, record payments and issue receipts.',
       status: 'Available',
       statusTone: 'ok',
-      to: '/quotations',
-      linkLabel: 'Create a quotation',
+      to: '/seller?tab=quotations',
+      linkLabel: 'Manage quotations',
     },
     {
       key: 'messages',
