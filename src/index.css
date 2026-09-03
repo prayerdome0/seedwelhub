@@ -2621,3 +2621,78 @@ a.card:hover {
   }
   html { scroll-behavior: auto; }
 }
+
+/* ---------- Seller dashboard ---------- */
+.grid--4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.dash-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.dash-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.channel-card { display: flex; flex-direction: column; gap: 12px; }
+.channel-card__head { display: flex; gap: 14px; align-items: flex-start; }
+.channel-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--green-soft, #eef7ee);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex: none;
+}
+.channel-card__title { margin: 0 0 6px; font-size: 17px; }
+.channel-card__desc { margin: 0; color: var(--text-muted); font-size: 14px; }
+.channel-card__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+
+.image-url-field { display: flex; gap: 14px; align-items: flex-start; }
+.image-url-field__preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: var(--bg-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex: none;
+  font-size: 22px;
+}
+.image-url-field__preview img { width: 100%; height: 100%; object-fit: cover; }
+.image-url-field__inputs { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+.cell-media { display: flex; align-items: center; gap: 10px; }
+.cell-media__img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.cell-media__img--empty { border: 1px dashed var(--border); }
+
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.qty-adjust { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+
+.import-steps { margin: 16px 0 0; padding-left: 20px; display: grid; gap: 16px; }
+.import-steps li { color: var(--text-muted); font-size: 14px; }
+.import-steps strong { color: var(--text); }
+.badge--muted { background: var(--bg-soft); color: var(--text-muted); }

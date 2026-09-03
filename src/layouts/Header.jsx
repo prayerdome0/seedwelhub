@@ -73,6 +73,7 @@ export default function Header() {
                 </button>
                 <div className="profile-menu__dropdown">
                   <Link to="/profile" className="dropdown-link" onClick={closeMenu}>My Profile</Link>
+                  <Link to="/seller" className="dropdown-link" onClick={closeMenu}>Seller Dashboard</Link>
                   {isAdmin && <Link to="/admin" className="dropdown-link" onClick={closeMenu}>Admin</Link>}
                   <Link to="/settings" className="dropdown-link" onClick={closeMenu}>Settings</Link>
                   <button type="button" className="dropdown-link" onClick={handleLogout}>Log Out</button>
