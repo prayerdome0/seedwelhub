@@ -60,6 +60,15 @@ export default function Header() {
             </NavLink>
           ))}
 
+          {/* Admin tab — only rendered for users whose Firestore role is 'admin'.
+              AuthContext watches the users document in realtime, so assigning
+              the role in Firestore shows this immediately. */}
+          {isAdmin && (
+            <NavLink to="/admin" className="site-nav__link site-nav__link--admin" onClick={closeMenu}>
+              Admin
+            </NavLink>
+          )}
+
           {user ? (
             <div className="site-nav__account">
               <Link to="/notifications" className="site-nav__icon-link" onClick={closeMenu} aria-label="Notifications">

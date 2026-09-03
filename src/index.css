@@ -758,6 +758,16 @@ a.card:hover {
 }
 .site-nav__link:hover { background: var(--bg-soft); }
 .site-nav__link.active { color: var(--green-dark); background: var(--green-soft); }
+/* Admin tab — rendered only when the Firestore role is 'admin'. */
+.site-nav__link--admin {
+  color: #fff;
+  background: var(--navy);
+}
+.site-nav__link--admin:hover,
+.site-nav__link--admin.active {
+  color: #fff;
+  background: var(--navy-800);
+}
 
 .site-nav__account {
   display: flex;

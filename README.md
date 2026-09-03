@@ -96,6 +96,12 @@ npm run preview
 - **Default role is `user`.** A normal user can never choose `role: admin` — this
   is enforced by Firestore Security Rules (see `firestore.rules`), never by
   frontend visibility.
+- **Making someone an admin:** set `role: 'admin'` on their `users/{uid}`
+  document in the Firestore console. `AuthContext` holds a realtime subscription
+  to the signed-in user's own document, so the change is detected immediately —
+  the Admin tab appears in the header nav (and the profile/dropdown links and
+  the `/admin` route guard open up) without logging out and back in. Revoking
+  the role works the same way, in reverse.
 - Admin operations are gated on both the UI (Admin tab) and the rules
   (`isAdmin()`).
 - Private data (orders, payments, conversations, messages, notifications) is only
