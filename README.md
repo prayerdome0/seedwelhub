@@ -134,7 +134,13 @@ photos remain unmodified.
   detail, businesses, business profile, search (loading/empty/error/retry states).
 - **Commerce:** orders, order detail, order tracking, payments, payment detail,
   quotations, invoices, receipts, document QR verification.
-- **Communication:** messages, conversations, groups, group chat.
+- **Communication:** messages, conversations, groups, group chat — powered by a
+  fixed-layout messaging workspace (fixed header, scroll-only message list,
+  fixed composer) with replies, reactions, stars/pins, edit/delete, forwarding,
+  read receipts, typing & presence, voice notes, attachments with preview +
+  caption, emoji/stickers, camera, location sharing, in-conversation search,
+  media/starred/pinned panels, mute/block/report, and full group admin
+  controls (@mentions, member management, announcements, permissions).
 - **Notifications:** FCM web push + in-app notification center with tabs.
 - **Admin:** dashboard, users, businesses, products, orders, payments, reports,
   verification, security.

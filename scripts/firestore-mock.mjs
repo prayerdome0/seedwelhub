@@ -114,6 +114,9 @@ export async function getDocs(refOrQuery) {
 }
 
 // ---- writes ----------------------------------------------------------------
+// A marker for `deleteField()` that survives dotted-path expansion.
+const DELETE = Symbol('mock-delete');
+
 function resolveValues(target, data) {
   const out = { ...data };
   for (const [key, value] of Object.entries(out)) {
@@ -124,21 +127,65 @@ function resolveValues(target, data) {
       out[key] = [...new Set([...(target?.[key] || []), ...value.items])];
     else if (value && value.__sentinel === 'arrayRemove')
       out[key] = (target?.[key] || []).filter((v) => !value.items.includes(v));
-    else if (value && value.__sentinel === 'deleteField') delete out[key];
+    else if (value && value.__sentinel === 'deleteField') out[key] = DELETE;
   }
   return out;
 }
 
+// Real Firestore accepts dotted paths ("typing.uid1") as nested field updates.
+// This writes the leaf value (or deletes it for DELETE) at the nested path.
+function setDeep(root, path, value) {
+  const parts = path.split('.');
+  let node = root;
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    const part = parts[i];
+    if (typeof node[part] !== 'object' || node[part] === null || Array.isArray(node[part])) {
+      node[part] = {};
+    }
+    node = node[part];
+  }
+  const leaf = parts[parts.length - 1];
+  if (value === DELETE) delete node[leaf];
+  else node[leaf] = value;
+}
+
+// Applies resolved key/value pairs onto a (cloned) document, expanding dotted
+// paths and honouring top-level DELETE markers.
+function applyFields(target, resolved) {
+  for (const [key, value] of Object.entries(resolved)) {
+    if (key.includes('.')) setDeep(target, key, value);
+    else if (value === DELETE) delete target[key];
+    else target[key] = value;
+  }
+  return target;
+}
+
+// Expands dotted paths onto a fresh object (no existing document to merge into).
+function expandFresh(resolved) {
+  const fresh = {};
+  for (const [key, value] of Object.entries(resolved)) {
+    if (value === DELETE) continue;
+    if (key.includes('.')) setDeep(fresh, key, value);
+    else fresh[key] = value;
+  }
+  return fresh;
+}
+
 export async function addDoc(ref, data) {
   const id = nextId();
-  bucket(ref.path).set(id, resolveValues(undefined, data));
+  bucket(ref.path).set(id, expandFresh(resolveValues(undefined, data)));
   return { id, path: ref.path };
 }
 
 export async function setDoc(ref, data, options = {}) {
   const existing = bucket(ref.path).get(ref.id);
   const resolved = resolveValues(existing, data);
-  bucket(ref.path).set(ref.id, options.merge ? { ...existing, ...resolved } : resolved);
+  if (options.merge && existing !== undefined) {
+    const next = structuredClone(existing);
+    bucket(ref.path).set(ref.id, applyFields(next, resolved));
+  } else {
+    bucket(ref.path).set(ref.id, expandFresh(resolved));
+  }
 }
 
 export async function updateDoc(ref, data) {
@@ -148,7 +195,8 @@ export async function updateDoc(ref, data) {
     error.code = 'not-found';
     throw error;
   }
-  bucket(ref.path).set(ref.id, { ...existing, ...resolveValues(existing, data) });
+  const next = structuredClone(existing);
+  bucket(ref.path).set(ref.id, applyFields(next, resolveValues(existing, data)));
 }
 
 export async function deleteDoc(ref) {

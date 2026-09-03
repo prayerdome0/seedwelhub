@@ -11,6 +11,10 @@ import { DEFAULT_ROLE } from '../utils/constants';
 
 const AuthContext = createContext({ user: null, profile: null, loading: true });
 
+// Exported for verification suites, which mount real components with a stub
+// signed-in user instead of the Firebase-auth-backed provider.
+export { AuthContext };
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // Firebase Auth user
   const [profile, setProfile] = useState(null); // Firestore user document
