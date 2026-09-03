@@ -314,7 +314,8 @@ service cloud.firestore {
       // the recipient can read or update them.
       allow create: if isAdmin() || signedIn();
       allow update: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
-      allow delete: if isAdmin();
+      // A user may clear their own notifications from the notification centre.
+      allow delete: if isAdmin() || (signedIn() && resource.data.recipientId == request.auth.uid);
     }
 
     // ---------- device tokens ----------

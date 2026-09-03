@@ -15,6 +15,7 @@ const root = process.cwd();
 const UNIT_SUITES = [
   '/scripts/verify-documents.mjs',
   '/scripts/verify-navigation.mjs',
+  '/scripts/verify-routing.mjs',
   '/scripts/verify-security.mjs',
   '/scripts/verify-render.mjs',
 ];
@@ -23,6 +24,7 @@ const UNIT_SUITES = [
 const FLOW_SUITES = [
   '/scripts/verify-flows.mjs',
   '/scripts/verify-messaging.mjs',
+  '/scripts/verify-groups.mjs',
 ];
 
 // Integration mount of the real ChatWorkspace against the mock Firestore.

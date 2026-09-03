@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { getNotificationsForUser, markNotificationRead, markAllRead } from '../services/notificationService';
+import {
+  getNotificationsForUser,
+  markNotificationRead,
+  markAllRead,
+  deleteNotification,
+} from '../services/notificationService';
 import { subscribe } from '../services/_base';
 import { where } from '../firebase/firestore';
 import { COLLECTIONS } from '../utils/constants';
@@ -14,6 +19,7 @@ const NotificationContext = createContext({
   refresh: () => {},
   markRead: () => {},
   markAllRead: () => {},
+  remove: () => {},
 });
 
 const MAX_NOTIFICATIONS = 100;
@@ -38,8 +44,11 @@ export function NotificationProvider({ children }) {
 
     const apply = (items) => {
       if (!active) return;
+      // Dismissed notifications are soft-deleted, so they are filtered out of
+      // every list and out of the unread badge.
       setNotifications(
-        sortByTimestamp(items || [], 'createdAt', 'desc').slice(0, MAX_NOTIFICATIONS)
+        sortByTimestamp((items || []).filter((n) => !n.deleted), 'createdAt', 'desc')
+          .slice(0, MAX_NOTIFICATIONS)
       );
       setLoading(false);
     };
@@ -89,6 +98,13 @@ export function NotificationProvider({ children }) {
     if (user) await markAllRead(user.uid).catch(() => {});
   }, [user]);
 
+  // Dismisses a single notification. The row disappears immediately; the
+  // soft-delete write follows and failures never break the screen.
+  const remove = useCallback(async (id) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    await deleteNotification(id).catch(() => {});
+  }, []);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -100,6 +116,7 @@ export function NotificationProvider({ children }) {
         refresh,
         markRead,
         markAllRead: markAll,
+        remove,
       }}
     >
       {children}

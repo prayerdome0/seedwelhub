@@ -2311,6 +2311,56 @@ a.card:hover {
   flex-wrap: wrap;
   justify-content: center;
 }
+.notfound__logo {
+  height: 44px;
+  width: auto;
+  max-width: 100%;
+  margin-bottom: 8px;
+}
+.notfound__art {
+  width: min(220px, 70vw);
+  height: auto;
+  margin: 4px 0 -8px;
+}
+.notfound__path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 999px;
+  padding: 4px 12px;
+  margin: -16px 0 24px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.notfound__actions--secondary {
+  margin-top: 12px;
+}
+.notfound__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+  margin-top: 32px;
+  font-size: 14px;
+}
+.notfound__links a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.notfound__links a:hover {
+  color: var(--green);
+  text-decoration: underline;
+}
+@media (max-width: 480px) {
+  .notfound {
+    padding: 48px 16px;
+  }
+  .notfound__actions .btn,
+  .notfound__actions--secondary .btn {
+    flex: 1 1 140px;
+  }
+}
 
 /* ---------- Admin nav ---------- */
 .admin-layout {
@@ -5525,4 +5575,155 @@ body.chat-workspace-open .app-main {
   .chat-header__actions { gap: 0; }
   .chat-header__icon { width: 34px; font-size: 16px; }
   .chat-composer__send { width: 40px; height: 40px; }
+}
+
+/* ---------- Group information & photo editor ---------- */
+.group-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.group-info__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.group-info__avatar {
+  position: relative;
+  display: inline-block;
+}
+.group-info__camera {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--green);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.group-info__camera:disabled { opacity: 0.6; cursor: not-allowed; }
+.group-info__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin: 0;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.group-info__inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+.group-info__inline input { flex: 1 1 160px; min-width: 0; }
+
+.group-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: min(360px, 92vw);
+}
+.group-photo__title { margin: 0; font-size: 18px; }
+.group-photo__current {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+}
+.group-photo__current img { width: 100%; height: 100%; object-fit: cover; }
+.group-photo__crop {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #111;
+  max-width: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.group-photo__crop:active { cursor: grabbing; }
+.group-photo__crop img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  transform-origin: center;
+}
+.group-photo__mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.group-photo__zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 14px;
+}
+.group-photo__zoom input { flex: 1; }
+.group-photo__pick { cursor: pointer; }
+
+/* ---------- Notification centre & preferences ---------- */
+.notif-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.notif-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.notif-row .notif-item { flex: 1; min-width: 0; }
+.notif-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+.notif-row__action {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+.notif-row__action:hover { border-color: var(--green); color: var(--green); }
+.notif-row__action--danger:hover { border-color: #c0392b; color: #c0392b; }
+.notif-prefs {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.notif-prefs__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
 }

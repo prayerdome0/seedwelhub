@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Spinner from '../components/Spinner';
@@ -12,6 +13,24 @@ import {
   deleteDeviceTokensForUser,
 } from '../services/deviceTokenService';
 
+// Notification categories the user can individually switch off. Everything
+// defaults to ON so existing users keep receiving what they receive today.
+const NOTIFICATION_PREFS = [
+  { id: 'messages', label: 'Messages & group messages' },
+  { id: 'orders', label: 'Orders' },
+  { id: 'payments', label: 'Payments' },
+  { id: 'invoices', label: 'Invoices' },
+  { id: 'quotations', label: 'Quotations' },
+  { id: 'receipts', label: 'Receipts' },
+  { id: 'business', label: 'Seller & business updates' },
+  { id: 'security', label: 'Account & security alerts' },
+];
+
+const DEFAULT_PREFS = NOTIFICATION_PREFS.reduce(
+  (acc, pref) => ({ ...acc, [pref.id]: true }),
+  {}
+);
+
 const TABS = [
   { id: 'account', label: 'Account' },
   { id: 'profile', label: 'Profile' },
@@ -24,7 +43,13 @@ const TABS = [
 export default function SettingsPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
   const { showToast } = useToast();
-  const [tab, setTab] = useState('account');
+  // The tab is driven by ?tab= so deep links such as
+  // /settings?tab=notifications (used by the notification centre) survive a
+  // refresh and can be shared.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tab = TABS.some((t) => t.id === tabParam) ? tabParam : 'account';
+  const setTab = (id) => setSearchParams(id === 'account' ? {} : { tab: id }, { replace: true });
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
@@ -33,6 +58,31 @@ export default function SettingsPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushLoading, setPushLoading] = useState(true);
+  // Per-category notification preferences, persisted on the user profile.
+  const [prefs, setPrefs] = useState(DEFAULT_PREFS);
+  const [prefsSaving, setPrefsSaving] = useState(false);
+
+  // Mirror the saved preferences from the profile whenever it (re)loads.
+  useEffect(() => {
+    setPrefs({ ...DEFAULT_PREFS, ...(profile?.notificationPrefs || {}) });
+  }, [profile]);
+
+  // Toggling a category saves straight away so the choice survives a refresh.
+  const handleTogglePref = async (id) => {
+    const next = { ...prefs, [id]: !prefs[id] };
+    setPrefs(next);
+    if (!user) return;
+    setPrefsSaving(true);
+    try {
+      await updateProfile(user.uid, { notificationPrefs: next });
+      if (refreshProfile) await refreshProfile();
+    } catch {
+      setPrefs(prefs); // roll back so the switch matches what is stored
+      showToast('Could not save your notification preferences.', 'error');
+    } finally {
+      setPrefsSaving(false);
+    }
+  };
 
   // Load the current push-notification state so the Setting screen reflects
   // what was previously enabled (stored token + granted browser permission).
@@ -251,6 +301,27 @@ export default function SettingsPage() {
               In-app notifications are always on. Push adds alerts when the page is not in focus.
             </p>
           )}
+
+          <h3 className="panel__title mt-24">What you get notified about</h3>
+          <p className="text-muted">
+            These preferences apply to both in-app and push notifications.
+          </p>
+          <div className="notif-prefs">
+            {NOTIFICATION_PREFS.map((pref) => (
+              <label key={pref.id} className="notif-prefs__row">
+                <input
+                  type="checkbox"
+                  checked={prefs[pref.id] !== false}
+                  onChange={() => handleTogglePref(pref.id)}
+                  disabled={prefsSaving}
+                />
+                <span>{pref.label}</span>
+              </label>
+            ))}
+          </div>
+          <p className="text-muted mt-8">
+            Account &amp; security alerts are always delivered in the app for your protection.
+          </p>
         </div>
       )}
 

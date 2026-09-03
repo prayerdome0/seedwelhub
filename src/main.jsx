@@ -21,6 +21,23 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Deep-link restoration. If a static host (or the 404.html fallback) bounced a
+// direct URL like /messages/group/123 back to "/", we replay the original path
+// into the SPA router so a refresh lands on the same screen instead of home.
+function restoreDeepLink() {
+  try {
+    const target = sessionStorage.getItem('seedwel:redirect');
+    if (!target) return;
+    sessionStorage.removeItem('seedwel:redirect');
+    if (target.startsWith('/') && !target.startsWith('//') && target !== '/') {
+      window.history.replaceState(null, '', target);
+    }
+  } catch {
+    /* storage unavailable — ignore, the app still loads at "/" */
+  }
+}
+restoreDeepLink();
+
 function Root() {
   const [introDone, setIntroDone] = useState(false);
 
