@@ -7,21 +7,31 @@ import curatedGoods from '../assets/banners/curated-goods.jpg';
 import coffeeShop from '../assets/banners/coffee-shop.jpg';
 import fashionMarket from '../assets/banners/fashion-market.jpg';
 
-const AUTOPLAY_MS = 5000;
+// Every banner auto-advances after AUTOPLAY_MS. The timer restarts whenever the
+// index changes, so a manual swipe / arrow / dot press always gets a fresh
+// pause before the next automatic change.
+const AUTOPLAY_MS = 6000;
 
+// Minimum horizontal drag (in px) before a swipe counts as next/previous.
+const SWIPE_THRESHOLD_PX = 48;
+
+// The five Seedwel Hub marketplace banners. Each one uses a real marketplace
+// photo (with the Seedwel brand lockup layered on) and the official green /
+// navy / white palette. Slide themes: Buy · Sell · Services · Connect ·
+// Manage & Grow.
 const SLIDES = [
   {
-    id: 'grow',
-    eyebrow: 'Seedwel Investment Limited',
+    id: 'buy',
+    eyebrow: 'Buy',
     title: (
       <>
-        The marketplace to <span className="accent">buy, sell, manage</span> &amp; grow
+        Discover products <span className="accent">near you</span>
       </>
     ),
     subtitle:
-      'Discover trusted businesses, products and services. Connect, transact and grow your business with Seedwel Hub.',
+      'Shop verified products from trusted sellers across Seedwel Hub — everything you need, closer than you think.',
     cta: [
-      { label: 'Get Started', to: '/register', variant: 'btn--primary' },
+      { label: 'Shop Products', to: '/products', variant: 'btn--primary' },
       { label: 'Explore Marketplace', to: '/marketplace', variant: 'btn--hero' },
     ],
     image: produceMarket,
@@ -30,34 +40,15 @@ const SLIDES = [
     objectPosition: 'center 44%',
   },
   {
-    id: 'discover',
-    eyebrow: 'Discover',
-    title: (
-      <>
-        Trusted businesses <span className="accent">near you</span>
-      </>
-    ),
-    subtitle:
-      'Browse verified businesses and connect directly with the people behind them — all in one place.',
-    cta: [
-      { label: 'Browse Businesses', to: '/businesses', variant: 'btn--primary' },
-      { label: 'View Services', to: '/services', variant: 'btn--hero' },
-    ],
-    image: curatedGoods,
-    imageAlt: 'Basket of packaged goods in a local specialty shop',
-    imageLabel: 'Independent shops',
-    objectPosition: 'center 58%',
-  },
-  {
     id: 'sell',
     eyebrow: 'Sell',
     title: (
       <>
-        Put your products in front of <span className="accent">thousands</span>
+        Grow your business <span className="accent">on Seedwel Hub</span>
       </>
     ),
     subtitle:
-      'List once and reach everyone. Manage orders, payments and growth from a single dashboard.',
+      'List your products once and sell everywhere — manage orders, customers and payments from a single dashboard.',
     cta: [
       { label: 'Start Selling', to: '/sell', variant: 'btn--primary' },
       { label: 'Browse Products', to: '/products', variant: 'btn--hero' },
@@ -68,30 +59,30 @@ const SLIDES = [
     objectPosition: 'center 50%',
   },
   {
-    id: 'manage',
-    eyebrow: 'Manage',
+    id: 'services',
+    eyebrow: 'Services',
     title: (
       <>
-        Run your whole business <span className="accent">from one hub</span>
+        Find <span className="accent">trusted service providers</span>
       </>
     ),
     subtitle:
-      'Quotations, invoices, receipts, reviews and messaging — everything you need to operate and scale.',
+      'Connect with verified professionals for construction, transport, beauty, finance and more — reviewed by the Seedwel community.',
     cta: [
-      { label: 'Create Account', to: '/register', variant: 'btn--primary' },
-      { label: 'See How It Works', to: '/marketplace', variant: 'btn--hero' },
+      { label: 'Browse Services', to: '/services', variant: 'btn--primary' },
+      { label: 'View Businesses', to: '/businesses', variant: 'btn--hero' },
     ],
-    image: coffeeShop,
-    imageAlt: 'Products and coffee equipment arranged on shelves in a small shop',
-    imageLabel: 'Specialty goods',
-    objectPosition: 'center 55%',
+    image: curatedGoods,
+    imageAlt: 'Basket of packaged goods in a local specialty shop',
+    imageLabel: 'Independent shops',
+    objectPosition: 'center 58%',
   },
   {
-    id: 'community',
-    eyebrow: 'Buy. Sell. Manage. Grow.',
+    id: 'connect',
+    eyebrow: 'Connect',
     title: (
       <>
-        One hub. <span className="accent">Endless opportunities.</span>
+        Connect with <span className="accent">buyers and sellers</span>
       </>
     ),
     subtitle:
@@ -99,6 +90,25 @@ const SLIDES = [
     cta: [
       { label: 'Join Seedwel Hub', to: '/register', variant: 'btn--primary' },
       { label: 'Explore Marketplace', to: '/marketplace', variant: 'btn--hero' },
+    ],
+    image: coffeeShop,
+    imageAlt: 'Products and coffee equipment arranged on shelves in a small shop',
+    imageLabel: 'Specialty goods',
+    objectPosition: 'center 55%',
+  },
+  {
+    id: 'manage-grow',
+    eyebrow: 'Manage & Grow',
+    title: (
+      <>
+        Manage your business <span className="accent">and grow</span>
+      </>
+    ),
+    subtitle:
+      'Run your whole business from one hub — quotations, invoices, receipts, payments, reviews and messaging in one place.',
+    cta: [
+      { label: 'Manage My Business', to: '/seller', variant: 'btn--primary' },
+      { label: 'Join Seedwel Hub', to: '/register', variant: 'btn--hero' },
     ],
     image: coffeeBeans,
     imageAlt: 'Coffee beans held in the hands of a local producer',
@@ -108,44 +118,145 @@ const SLIDES = [
 ];
 
 /**
- * Auto-advancing hero banner carousel. Each banner uses a real marketplace
- * photo and the official Seedwel mark instead of an illustrated mockup.
- * Auto-plays every few seconds, pauses on hover/focus and exposes arrows + dots
- * for manual control.
+ * Auto-advancing hero banner carousel — one full-width professional banner per
+ * theme (Buy, Sell, Services, Connect, Manage & Grow).
+ *
+ * - Auto-plays every few seconds and pauses on hover / focus.
+ * - Restarts its timer after ANY manual navigation (arrows, dots or swipe).
+ * - Supports touch + pointer swipes (desktop trackpads too) without hijacking
+ *   vertical page scrolling.
+ * - Exposes arrows + dots for keyboard and mouse users.
  */
 export default function BannerCarousel() {
   const count = SLIDES.length;
   const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef(null);
+  // Touch / pointer swipe tracking (started when a horizontal intent is seen).
+  const gestureRef = useRef(null);
 
-  const go = useCallback((i) => {
-    setIndex(((i % count) + count) % count);
+  const go = useCallback(
+    (nextIndex) => {
+      const target = ((nextIndex % count) + count) % count;
+      setDirection(target > index ? 1 : target < index ? -1 : 0);
+      setIndex(target);
+    },
+    [count, index]
+  );
+
+  const next = useCallback(() => {
+    setDirection(1);
+    setIndex((current) => (current + 1) % count);
   }, [count]);
 
+  const prev = useCallback(() => {
+    setDirection(-1);
+    setIndex((current) => (current - 1 + count) % count);
+  }, [count]);
+
+  // Auto-play: the effect re-runs whenever `index`, `paused` or `count`
+  // changes, which gives a full AUTOPLAY_MS of calm after every manual
+  // navigation, while hovering keeps the carousel paused.
   useEffect(() => {
     if (paused) return undefined;
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
       return undefined;
     }
     timerRef.current = setInterval(() => {
-      setIndex((i) => (i + 1) % count);
+      setIndex((current) => (current + 1) % count);
     }, AUTOPLAY_MS);
     return () => clearInterval(timerRef.current);
-  }, [paused, count]);
+  }, [paused, index, count]);
 
-  const pause = () => setPaused(true);
-  const resume = () => setPaused(false);
+  const pause = useCallback(() => setPaused(true), []);
+  const resume = useCallback(() => setPaused(false), []);
+
+  // Pause while the user is actively touching the banner; resume once the
+  // gesture ends (or when the pointer leaves without an interaction).
+  const onPointerDown = (event) => {
+    if (event.pointerType === 'mouse') return;
+    pause();
+    gestureRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      active: true,
+    };
+    // Keep receiving the pointerup even when the finger leaves the banner
+    // mid-swipe, so the gesture always completes cleanly.
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {
+      /* capture unavailable — the fallback touch handlers still apply */
+    }
+  };
+
+  const onPointerUp = (event) => {
+    const gesture = gestureRef.current;
+    if (!gesture) return;
+    gestureRef.current = null;
+    resume();
+    if (!gesture.active) return;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    // Only horizontal swipes navigate — vertical swipes keep scrolling the page.
+    if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if (dx < 0) next();
+      else prev();
+    }
+  };
+
+  // Pointer cancel (scroll capture, browser gesture) — drop the gesture so the
+  // page keeps scrolling naturally.
+  const onPointerCancel = () => {
+    gestureRef.current = null;
+    resume();
+  };
+
+  // Legacy touch fallback for browsers without Pointer Events.
+  const onTouchStart = (event) => {
+    if (typeof window !== 'undefined' && 'PointerEvent' in window) return;
+    pause();
+    const touch = event.touches?.[0];
+    if (touch) {
+      gestureRef.current = { x: touch.clientX, y: touch.clientY, active: true };
+    }
+  };
+
+  const onTouchEnd = (event) => {
+    if (typeof window !== 'undefined' && 'PointerEvent' in window) return;
+    const gesture = gestureRef.current;
+    if (!gesture) return;
+    gestureRef.current = null;
+    resume();
+    const touch = event.changedTouches?.[0];
+    if (!touch || !gesture.active) return;
+    const dx = touch.clientX - gesture.x;
+    const dy = touch.clientY - gesture.y;
+    if (Math.abs(dx) > SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if (dx < 0) next();
+      else prev();
+    }
+  };
 
   return (
     <div
-      className="banner-carousel"
+      className={`banner-carousel ${paused ? 'is-paused' : ''}`}
+      data-direction={direction}
       aria-roledescription="carousel"
       aria-label="Seedwel Hub highlights"
       onMouseEnter={pause}
       onMouseLeave={resume}
       onFocusCapture={pause}
       onBlurCapture={resume}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
       <div className="banner-carousel__slides">
         {SLIDES.map((slide, i) => (
@@ -158,7 +269,9 @@ export default function BannerCarousel() {
             aria-hidden={i !== index}
           >
             <div className="banner-slide__content">
-              <p className="banner-slide__eyebrow">{slide.eyebrow}</p>
+              <p className="banner-slide__eyebrow">
+                <span aria-hidden="true">◆</span> {slide.eyebrow}
+              </p>
               <h1 className="banner-slide__title">{slide.title}</h1>
               <p className="banner-slide__subtitle">{slide.subtitle}</p>
               <div className="banner-slide__actions">
@@ -190,17 +303,19 @@ export default function BannerCarousel() {
         <button
           type="button"
           className="banner-carousel__arrow"
-          onClick={() => go(index - 1)}
+          onClick={prev}
           aria-label="Previous banner"
         >
           <span aria-hidden="true">‹</span>
         </button>
-        <div className="banner-carousel__dots" aria-label="Choose banner">
+        <div className="banner-carousel__dots" role="tablist" aria-label="Choose banner">
           {SLIDES.map((slide, i) => (
             <button
               key={slide.id}
               type="button"
-              aria-label={`Go to banner ${i + 1}`}
+              role="tab"
+              aria-selected={i === index}
+              aria-label={`Go to banner ${i + 1}: ${slide.eyebrow}`}
               aria-current={i === index ? 'true' : undefined}
               className={`banner-carousel__dot ${i === index ? 'is-active' : ''}`}
               onClick={() => go(i)}
@@ -210,7 +325,7 @@ export default function BannerCarousel() {
         <button
           type="button"
           className="banner-carousel__arrow"
-          onClick={() => go(index + 1)}
+          onClick={next}
           aria-label="Next banner"
         >
           <span aria-hidden="true">›</span>

@@ -1,8 +1,9 @@
 import { createDoc, getById, patchDoc, queryOnce, removeDoc } from './_base';
 import { arrayRemove, arrayUnion, deleteField, serverTimestamp, where } from '../firebase/firestore';
-import { COLLECTIONS } from '../utils/constants';
+import { COLLECTIONS, NOTIFICATION_TYPES } from '../utils/constants';
 import { generateConversationId } from '../utils/ids';
 import { messagePreview } from '../utils/chat';
+import { createNotification } from './notificationService';
 
 const CONVERSATIONS = COLLECTIONS.CONVERSATIONS;
 const MESSAGES = COLLECTIONS.MESSAGES;
@@ -97,7 +98,80 @@ export async function sendMessage({
     console.warn('[SeedwelHub] Message sent but inbox preview was not updated:', error);
   }
 
+  // Raise an in-app notification for the other participant(s) so the message
+  // lands in the header bell / push pipeline. Best effort and fire-and-forget:
+  // notification trouble must never fail (or slow down) an actual send.
+  notifyConversationMessageRecipients({
+    conversationId,
+    senderId,
+    senderName: message.senderName || data.senderName,
+    message,
+  }).catch(() => {});
+
   return message;
+}
+
+/**
+ * Creates "New message" / "Replied" notifications for everyone else in a
+ * direct conversation. Respects the per-conversation mute and block flags and
+ * skips the recipient when they are clearly looking at this thread right now
+ * (they read it within the last few seconds — the open chat already shows the
+ * message, so a notification would just be noise).
+ *
+ * NOTE: per-user notification preferences (Settings → Notifications) live on
+ * the recipient's profile, which Firestore rules do not let the sender read,
+ * so category filtering is enforced by the trusted server-side push service.
+ */
+async function notifyConversationMessageRecipients({
+  conversationId,
+  senderId,
+  senderName = '',
+  message,
+}) {
+  if (!conversationId || !senderId) return;
+  const conversation = await getById(CONVERSATIONS, conversationId);
+  if (!conversation) return;
+
+  const recipients = (conversation.participantIds || conversation.participants || []).filter(
+    (uid) => uid && uid !== senderId
+  );
+  if (!recipients.length) return;
+
+  const preview = messagePreview(message);
+  const sender = String(senderName || conversation[`displayName_${senderId}`] || '').trim() || 'Someone';
+  const isReply = Boolean(message?.replyTo) && !message?.deleted;
+  const title = isReply
+    ? `Replied to your message: ${sender}`
+    : `New message from ${sender}`;
+
+  const now = Date.now();
+  const recentReadMs = (timestamp) => {
+    if (!timestamp) return 0;
+    if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+    const parsed = new Date(timestamp).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  for (const recipientId of recipients) {
+    const muted = conversation.muted?.[recipientId];
+    const blocked = conversation.blockedBy?.[recipientId];
+    if (muted || blocked) continue;
+
+    const lastReadMs = recentReadMs(conversation.lastReadBy?.[recipientId]);
+    if (lastReadMs && now - lastReadMs < 20000) continue;
+
+    // eslint-disable-next-line no-await-in-loop
+    await createNotification({
+      recipientId,
+      title,
+      message: preview,
+      type: NOTIFICATION_TYPES.MESSAGES,
+      related: {
+        conversationId,
+        messageId: message?.id || null,
+      },
+    }).catch(() => {});
+  }
 }
 
 export async function markConversationRead(conversationId, uid) {

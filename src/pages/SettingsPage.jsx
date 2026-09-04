@@ -5,6 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import Spinner from '../components/Spinner';
 import Button from '../components/Button';
 import { updateProfile } from '../services/userService';
+import { createNotification } from '../services/notificationService';
+import { NOTIFICATION_TYPES } from '../utils/constants';
 import { sendPasswordReset, isEmailVerified, sendVerificationEmail, logout } from '../firebase/auth';
 import { getFirebaseMessagingToken, requestNotificationPermission } from '../firebase/messaging';
 import {
@@ -131,6 +133,15 @@ export default function SettingsPage() {
     try {
       await sendPasswordReset(user.email);
       showToast('Password reset email sent. Please check your inbox.', 'success');
+      // Account/security alert in the notification centre (and push pipeline)
+      // so the account owner sees the reset request in their activity feed.
+      createNotification({
+        recipientId: user.uid,
+        title: 'Password reset requested 🔒',
+        message: 'A password reset email was sent to your address. If this was not you, please secure your account immediately.',
+        type: NOTIFICATION_TYPES.SECURITY,
+        related: { route: '/settings?tab=password' },
+      }).catch(() => {});
     } catch (err) {
       showToast('Could not send reset email.', 'error');
     }

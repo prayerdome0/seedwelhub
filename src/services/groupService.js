@@ -7,9 +7,10 @@ import {
   serverTimestamp,
   where,
 } from '../firebase/firestore';
-import { COLLECTIONS } from '../utils/constants';
+import { COLLECTIONS, NOTIFICATION_TYPES } from '../utils/constants';
 import { sortByTimestamp } from '../utils/format';
 import { messagePreview } from '../utils/chat';
+import { createNotification } from './notificationService';
 
 const GROUPS = COLLECTIONS.GROUPS;
 const MEMBERS = COLLECTIONS.GROUP_MEMBERS;
@@ -319,7 +320,56 @@ export async function sendGroupMessage({
     console.warn('[SeedwelHub] Group message sent but group preview was not updated:', error);
   }
 
+  // Notify the other group members through the notification centre / bell so
+  // group activity reaches them even when they are not in the thread.
+  // Best-effort and fire-and-forget: failures never fail the actual send.
+  notifyGroupMessageMembers({
+    groupId,
+    senderId,
+    senderName: message.senderName || data.senderName,
+    message,
+  }).catch(() => {});
+
   return message;
+}
+
+/**
+ * Creates "New message in {group}" / "{name} replied in {group}" notifications
+ * for the group's members.
+ *
+ * Membership mute flags are stored on each member's own groupMembers document,
+ * which Firestore rules only let the member themselves read, so per-member
+ * mutes and per-user notification preferences are enforced by the trusted
+ * server-side push service; the client notifies all current members and never
+ * the sender. Sending is capped at a sane group size to keep writes bounded.
+ */
+async function notifyGroupMessageMembers({ groupId, senderId, senderName = '', message }) {
+  if (!groupId || !senderId) return;
+  const group = await getById(GROUPS, groupId);
+  if (!group) return;
+
+  const members = (group.memberIds || []).filter((uid) => uid && uid !== senderId);
+  if (!members.length || members.length > 300) return;
+
+  const preview = messagePreview(message);
+  const sender = String(senderName || '').trim() || 'A member';
+  const isReply = Boolean(message?.replyTo) && !message?.deleted;
+  const groupName = String(group.name || '').trim() || 'the group';
+  const title = isReply ? `${sender} replied in ${groupName}` : `New message in ${groupName}`;
+
+  for (const recipientId of members) {
+    // eslint-disable-next-line no-await-in-loop
+    await createNotification({
+      recipientId,
+      title,
+      message: preview,
+      type: NOTIFICATION_TYPES.MESSAGES,
+      related: {
+        groupId,
+        messageId: message?.id || null,
+      },
+    }).catch(() => {});
+  }
 }
 
 // ---------------------------------------------------------------------------

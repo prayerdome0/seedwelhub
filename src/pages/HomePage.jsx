@@ -20,10 +20,41 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero — animated banner carousel + persistent search/stats */}
+      {/* Hero — five auto-scrolling professional banners + search + stats */}
       <section className="hero">
         <div className="container">
           <BannerCarousel />
+
+          <div className="hero__features">
+            <div className="hero__feature">
+              <span className="hero__feature-icon" aria-hidden="true">✓</span>
+              <span className="hero__feature-text">
+                <span className="hero__feature-title">Trusted</span>
+                <span className="hero__feature-desc">Secure &amp; reliable platform</span>
+              </span>
+            </div>
+            <div className="hero__feature">
+              <span className="hero__feature-icon" aria-hidden="true">✓</span>
+              <span className="hero__feature-text">
+                <span className="hero__feature-title">Connected</span>
+                <span className="hero__feature-desc">Buyers, sellers &amp; service providers</span>
+              </span>
+            </div>
+            <div className="hero__feature">
+              <span className="hero__feature-icon" aria-hidden="true">✓</span>
+              <span className="hero__feature-text">
+                <span className="hero__feature-title">Grow</span>
+                <span className="hero__feature-desc">Expand your business</span>
+              </span>
+            </div>
+            <div className="hero__feature">
+              <span className="hero__feature-icon" aria-hidden="true">✓</span>
+              <span className="hero__feature-text">
+                <span className="hero__feature-title">Support</span>
+                <span className="hero__feature-desc">We're here to help you succeed</span>
+              </span>
+            </div>
+          </div>
 
           <div className="hero__search">
             <SearchBar variant="large" placeholder="Search products, businesses, services…" />
