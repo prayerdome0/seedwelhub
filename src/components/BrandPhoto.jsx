@@ -18,7 +18,12 @@ export default function BrandPhoto({ src, alt, label, objectPosition = 'center',
       <div className="banner-photo__shade" aria-hidden="true" />
       <div className="banner-photo__brand" aria-label="Seedwel Hub">
         <img loading="lazy" decoding="async" src={REAL_LOGO} alt="" draggable={false} />
-        <span>Seedwel <strong>Hub</strong></span>
+        <span className="banner-photo__brand-text">
+          <span className="banner-photo__brand-word">
+            Seedwel <strong>Hub</strong>
+          </span>
+          <span className="banner-photo__brand-tag">Buy. Sell. Manage. Grow.</span>
+        </span>
       </div>
       {label && (
         <div className="banner-photo__label">

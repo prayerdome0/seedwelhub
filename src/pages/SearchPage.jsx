@@ -5,13 +5,16 @@ import Spinner from '../components/Spinner';
 import ProductCard from '../components/ProductCard';
 import BusinessCard from '../components/BusinessCard';
 import ServiceCard from '../components/ServiceCard';
+import LocationBar from '../components/LocationBar';
 import { EmptyState, ErrorState } from '../components/PageState';
 import useDebounce from '../hooks/useDebounce';
 import { searchProducts } from '../services/productService';
 import { searchServices } from '../services/serviceService';
 import { searchBusinesses } from '../services/businessService';
+import { useMarketLocation } from '../contexts/LocationContext';
 import { BUSINESS_CATEGORIES } from '../utils/constants';
 import { friendlyError } from '../utils/firebaseErrors';
+import { rankByLocation } from '../utils/location';
 
 const TYPES = [
   { id: 'all', label: 'All' },
@@ -19,6 +22,33 @@ const TYPES = [
   { id: 'services', label: 'Services' },
   { id: 'businesses', label: 'Businesses' },
 ];
+
+/**
+ * Renders one result kind (products/services/businesses). When a location is
+ * set, results nearest to the user render first under "Near {label}" and the
+ * rest follow under "Other locations" — search relevance is preserved inside
+ * each group (stable ordering), nothing is hidden.
+ */
+function RankedResults({ ranked, items, gridClass, label, place, renderCard }) {
+  const showNearSplit = Boolean(place && ranked && ranked.near.length > 0);
+  if (!showNearSplit) {
+    const ordered = place && ranked ? ranked.items : items;
+    return <div className={gridClass}>{ordered.map((item) => renderCard(item))}</div>;
+  }
+  return (
+    <>
+      <div className={gridClass}>{ranked.near.map((item) => renderCard(item))}</div>
+      {ranked.rest.length > 0 && (
+        <>
+          <p className="loc-group-title">
+            Other locations <span className="count">({ranked.rest.length})</span>
+          </p>
+          <div className={gridClass}>{ranked.rest.map((item) => renderCard(item))}</div>
+        </>
+      )}
+    </>
+  );
+}
 
 export default function SearchPage() {
   const [params] = useSearchParams();
@@ -33,6 +63,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState({ products: [], services: [], businesses: [] });
+  const { place, label } = useMarketLocation();
 
   const activeFilters = useMemo(
     () => Boolean(debouncedQuery || category),
@@ -75,8 +106,35 @@ export default function SearchPage() {
     if (initialType) setType(initialType);
   }, [initialType]);
 
+  // Location-aware ranking per result kind (applies to whatever the current
+  // search + category filters returned — filters are never bypassed).
+  const rankedProducts = useMemo(
+    () => (place ? rankByLocation(results.products, place) : null),
+    [results.products, place]
+  );
+  const rankedServices = useMemo(
+    () => (place ? rankByLocation(results.services, place) : null),
+    [results.services, place]
+  );
+  const rankedBusinesses = useMemo(
+    () => (place ? rankByLocation(results.businesses, place) : null),
+    [results.businesses, place]
+  );
   const total =
     results.products.length + results.services.length + results.businesses.length;
+
+  // Near-miss counter for whichever kind(s) the active tab actually shows, so
+  // the "nothing near you" note only appears for visible sections.
+  const nearTotal =
+    ((type === 'all' || type === 'products') && results.products.length > 0
+      ? rankedProducts?.near.length || 0
+      : 0) +
+    ((type === 'all' || type === 'services') && results.services.length > 0
+      ? rankedServices?.near.length || 0
+      : 0) +
+    ((type === 'all' || type === 'businesses') && results.businesses.length > 0
+      ? rankedBusinesses?.near.length || 0
+      : 0);
 
   const visible = (type === 'all') ||
     (type === 'products' && results.products.length > 0) ||
@@ -95,6 +153,8 @@ export default function SearchPage() {
       <div className="mb-24">
         <SearchBar variant="large" placeholder="Search products, services, businesses…" defaultValue={query} />
       </div>
+
+      <LocationBar noun="results" />
 
       {/* Filters */}
       <div className="stack mb-24">
@@ -143,30 +203,51 @@ export default function SearchPage() {
             </p>
           )}
 
+          {place && total > 0 && nearTotal === 0 && (
+            <p className="loc-results-note">
+              No results near <strong>{label}</strong> — showing results from other locations below.
+            </p>
+          )}
+
           {(type === 'all' || type === 'products') && results.products.length > 0 && (
             <section className="section">
               {type === 'all' && <h2 className="section__title">Products</h2>}
-              <div className="grid grid--products">
-                {results.products.map((p) => <ProductCard key={p.id} product={p} />)}
-              </div>
+              <RankedResults
+                ranked={rankedProducts}
+                items={results.products}
+                gridClass="grid grid--products"
+                place={place}
+                label={label}
+                renderCard={(p) => <ProductCard key={p.id} product={p} />}
+              />
             </section>
           )}
 
           {(type === 'all' || type === 'services') && results.services.length > 0 && (
             <section className="section">
               {type === 'all' && <h2 className="section__title">Services</h2>}
-              <div className="grid grid--services">
-                {results.services.map((s) => <ServiceCard key={s.id} service={s} />)}
-              </div>
+              <RankedResults
+                ranked={rankedServices}
+                items={results.services}
+                gridClass="grid grid--services"
+                place={place}
+                label={label}
+                renderCard={(s) => <ServiceCard key={s.id} service={s} />}
+              />
             </section>
           )}
 
           {(type === 'all' || type === 'businesses') && results.businesses.length > 0 && (
             <section className="section">
               {type === 'all' && <h2 className="section__title">Businesses</h2>}
-              <div className="grid grid--businesses">
-                {results.businesses.map((b) => <BusinessCard key={b.id} business={b} />)}
-              </div>
+              <RankedResults
+                ranked={rankedBusinesses}
+                items={results.businesses}
+                gridClass="grid grid--businesses"
+                place={place}
+                label={label}
+                renderCard={(b) => <BusinessCard key={b.id} business={b} />}
+              />
             </section>
           )}
 

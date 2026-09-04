@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import Spinner from '../components/Spinner';
+import LocationBar from '../components/LocationBar';
 import { EmptyState, ErrorState } from '../components/PageState';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useMarketLocation } from '../contexts/LocationContext';
 import { marketplaceProducts } from '../services/productService';
 import { BUSINESS_CATEGORIES } from '../utils/constants';
+import { rankByLocation } from '../utils/location';
 
 export default function MarketplacePage() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { place, label } = useMarketLocation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,12 +64,31 @@ export default function MarketplacePage() {
     }
   };
 
+  // Location-aware ranking: listings in the user's area/town come first, then
+  // same region/country, and finally everywhere else — nothing is ever hidden.
+  const ranked = useMemo(
+    () => (place ? rankByLocation(items, place) : null),
+    [items, place]
+  );
+  const nearCount = ranked ? ranked.near.length : 0;
+
+  const renderGrid = (list) => (
+    <div className="grid grid--products">
+      {list.map((p) => (
+        <ProductCard key={p.id} product={p} />
+      ))}
+    </div>
+  );
+
   return (
     <div className="container page">
       <div className="page__header">
         <h1 className="page__title">Marketplace</h1>
         <p className="page__subtitle">Discover products from businesses across Seedwel Hub.</p>
       </div>
+
+      {/* Location-aware marketplace controls */}
+      <LocationBar noun="products" />
 
       {/* Category filter */}
       <div className="chip-row mb-24">
@@ -97,11 +120,28 @@ export default function MarketplacePage() {
 
       {!loading && !error && items.length > 0 && (
         <>
-          <div className="grid grid--products">
-            {items.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          {place && nearCount === 0 && (
+            <p className="loc-results-note">
+              No products found near <strong>{label}</strong> yet — showing products from other
+              locations below.
+            </p>
+          )}
+
+          {ranked && ranked.near.length > 0 ? (
+            <>
+              {renderGrid(ranked.near)}
+              {ranked.rest.length > 0 && (
+                <>
+                  <p className="loc-group-title">
+                    Other locations <span className="count">({ranked.rest.length})</span>
+                  </p>
+                  {renderGrid(ranked.rest)}
+                </>
+              )}
+            </>
+          ) : (
+            renderGrid(items)
+          )}
 
           {!done && (
             <div className="text-center mt-32">

@@ -218,6 +218,26 @@ export async function confirmPaymentProof(proof, { reviewerId, business = null, 
     }
   }
 
+  // Tell the buyer their payment went through (payment confirmation).
+  // The seller is the reviewer here, so only the buyer needs this row.
+  if (proof.buyerId) {
+    await createNotification({
+      recipientId: proof.buyerId,
+      title: 'Payment confirmed ✅',
+      message: `Your payment of ${formatCurrency(Number(proof.amount) || 0, proof.currency || 'UGX')} for ${
+        proof.orderNumber || proof.invoiceNumber || 'your order'
+      } was confirmed${receipt?.id ? ' and your receipt is ready' : ''}.`,
+      type: NOTIFICATION_TYPES.PAYMENTS,
+      related: {
+        paymentProofId: proof.id,
+        orderId: proof.orderId || null,
+        invoiceId: proof.invoiceId || null,
+        receiptId: receipt?.id || null,
+        paymentId: proof.paymentId || null,
+      },
+    }).catch(() => {});
+  }
+
   // Immutable audit trail entry — who confirmed what, and when.
   await recordAuditLog({
     actorId: reviewerId,

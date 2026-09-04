@@ -120,10 +120,18 @@ videos, payment proofs, chat images) upload to Cloudinary using the existing
 **unsigned** `seedwel` preset. The returned URL is stored in Firestore — media is
 **never** stored inside Firestore.
 
-The homepage hero also includes a small set of optimized, locally bundled real
-marketplace photographs in `src/assets/banners/`. They are used as presentation
-imagery and carry the official Seedwel mark as a separate overlay, so the source
-photos remain unmodified.
+The homepage hero is one full-width banner area built from **five auto-scrolling
+professional banners** — Buy, Sell, Services, Connect and Manage &amp; Grow — each
+with its own marketplace photograph in `src/assets/banners/`, the official
+Seedwel mark (logo + "Buy. Sell. Manage. Grow." lockup) as a separate overlay,
+CTAs, and per-banner copy. The carousel auto-plays every few seconds, pauses on
+hover/focus, restarts its timer after any manual navigation, and supports
+touch/pointer **swipe** plus arrow and dot controls. Dots show the active
+banner. Inside the hero, always-visible **feature highlights** (Trusted ·
+Connected · Grow · Support), the search bar and the Products / Businesses /
+Services **statistics** stay beneath the banners. Everything is responsive
+without horizontal overflow; the categories and featured sections below the
+hero are untouched.
 
 ---
 
@@ -132,6 +140,16 @@ photos remain unmodified.
 - **Auth:** register → verify email → login → profile → logout; password reset.
 - **Marketplace:** home, marketplace, products, product detail, services, service
   detail, businesses, business profile, search (loading/empty/error/retry states).
+- **Location-aware marketplace:** with the user's consent the marketplace
+  detects an approximate location (browser geolocation → keyless reverse
+  geocoding) or lets the user pick one manually (country → region/province →
+  city/town → nearest area). Products, services, businesses and search results
+  are then ranked nearest-first — nearest area → same city → same region →
+  same country → other locations — while listings from other locations stay
+  visible below a "Other locations" divider. A location bar shows
+  "Showing {type} near {place}", category/search filters keep working, and
+  precise coordinates are never stored, displayed or exposed (only the coarse
+  town/country is kept, in localStorage).
 - **Commerce:** orders, order detail, order tracking, payments, payment detail,
   quotations, invoices, receipts, document QR verification.
 - **Communication:** messages, conversations, groups, group chat — powered by a
@@ -144,7 +162,19 @@ photos remain unmodified.
   Threads open on the unread divider (messages below stay unread until you
   reach the bottom); reading older messages never yanks you down — a
   "↓ N new messages" pill returns you to the latest.
-- **Notifications:** FCM web push + in-app notification center with tabs.
+- **Notifications:** FCM web push + in-app notification center with tabs and an
+  unread-count bell in the header. Covers new orders & order updates,
+  quotations, invoices, receipts, payments, payment confirmations, payment
+  proof submitted/rejected, new reviews (seller activity), **new direct
+  messages and replies** (per-conversation mute/block honoured; recipients
+  actively reading a thread are not spammed), **group messages** ("New message
+  in {group}" / "{name} replied in {group}"), and **account alerts** (e.g. a
+  password reset was requested). Every notification opens the exact page it
+  refers to (order, payment,
+  message thread, group, document…), supports mark-as-read and mark-all-as-read,
+  and per-category preferences live in Settings → Notifications. Background
+  delivery uses the FCM service worker; actual push dispatch stays server-side
+  (FCM Admin/Cloud Function) with tokens stored in `deviceTokens`.
 - **Admin:** dashboard, users, businesses, products, orders, payments, reports,
   verification, security.
 - **Global:** 404 page + React Error Boundary; every Firebase page has loading /
