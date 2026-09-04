@@ -84,6 +84,8 @@ export const COLLECTIONS = {
   SECURITY_EVENTS: 'securityEvents',
   ADMIN_ACTIONS: 'adminActions',
   SUPPORT_TICKETS: 'supportTickets',
+  PROMOTIONS: 'promotions',
+  PROMO_BANNERS: 'promoBanners',
 };
 
 export const ORDER_STATUS = {

@@ -174,7 +174,7 @@ check('Drawer body is the single scroll area (no nested scrollers)', () => {
   assert.match(out, /drawer__body/);
 });
 
-console.log(`\n${passed} assertions passed.`);
+
 
 console.log('\nMESSAGING COMPONENTS (fixed-layout workspace)');
 
@@ -360,6 +360,104 @@ check('chat helpers back the rendered UI', () => {
   assert.equal(chatUtils.messagePreview(sampleMessages[2]), '🎤 Voice message');
   assert.match(chatUtils.messagePreview(sampleMessages[1]), /prices\.pdf/);
   assert.ok(chatUtils.voiceBars('m3').length === 28);
+});
+
+
+// ---------------------------------------------------------------------------
+// Marketplace / promotions UI
+// ---------------------------------------------------------------------------
+const { default: ProductCard } = await import('../src/components/ProductCard.jsx');
+const { default: PromoPrice } = await import('../src/components/PromoPrice.jsx');
+const { default: PromoCountdown } = await import('../src/components/PromoCountdown.jsx');
+const { default: DealSection } = await import('../src/components/DealSection.jsx');
+const { default: ImageLightbox } = await import('../src/components/ImageLightbox.jsx');
+const { default: BannerCarousel } = await import('../src/components/BannerCarousel.jsx');
+
+console.log('\nMARKETPLACE & PROMOTIONS UI');
+
+const plainProduct = { id: 'p1', name: 'Fresh Maize 50kg', price: 500, currency: 'ZMW', location: 'Lusaka' };
+const dealProduct = {
+  ...plainProduct,
+  price: 425, oldPrice: 500, savings: 75, discountPercent: 15,
+  promotion: { id: 'promo1', title: 'Weekend Sale', endAt: Date.now() + 2.5 * 3600 * 1000, endsInMs: 2.5 * 3600 * 1000 },
+};
+
+check('a product card shows the name and price without a promotion', () => {
+  const html = render(h(ProductCard, { product: plainProduct }));
+  assert.match(html, /Fresh Maize 50kg/);
+  assert.match(html, /500/);
+  // No crossed-out price when there is no deal.
+  assert.ok(!/promo-price__was/.test(html), 'a non-discounted card must not show a "Was" price');
+});
+
+check('a discounted card shows Was / Now / Save and the % flag', () => {
+  const html = render(h(ProductCard, { product: dealProduct }));
+  assert.match(html, /promo-price__was/);
+  assert.match(html, /Save/);
+  assert.match(html, /−15%/);
+});
+
+check('PromoPrice never shows a "Was" line without a real saving', () => {
+  const noSaving = render(h(PromoPrice, { product: { price: 500, oldPrice: 500, savings: 0, currency: 'ZMW' } }));
+  assert.ok(!/promo-price__was/.test(noSaving));
+});
+
+check('the countdown renders "Ends in" while time remains', () => {
+  const html = mount(h(PromoCountdown, { endsAt: Date.now() + 2 * 3600 * 1000 + 35 * 60 * 1000 }));
+  assert.match(html, /Ends in/);
+  assert.match(html, /2h 3[45]m/);
+});
+
+check('an already-finished countdown renders nothing', () => {
+  const html = mount(h(PromoCountdown, { endsAt: Date.now() - 1000 }));
+  assert.ok(!/Ends in/.test(html));
+});
+
+check('a deal section with no products renders nothing at all', () => {
+  assert.equal(render(h(DealSection, { icon: '🔥', title: 'Best Deals', products: [] })), '');
+});
+
+check('a deal section renders its heading and cards when it has products', () => {
+  const html = render(h(DealSection, { icon: '🔥', title: 'Best Deals', products: [dealProduct] }));
+  assert.match(html, /Best Deals/);
+  assert.match(html, /Fresh Maize 50kg/);
+});
+
+check('the image lightbox exposes gallery navigation for multiple images', () => {
+  const html = mount(h(ImageLightbox, {
+    images: ['https://x.test/1.jpg', 'https://x.test/2.jpg'],
+    startIndex: 0, alt: 'Maize', onClose: () => {},
+  }));
+  assert.match(html, /aria-label="Close image viewer"/);
+  assert.match(html, /aria-label="Next image"/);
+  assert.match(html, /aria-label="Previous image"/);
+  assert.match(html, /1 \/ 2/);
+});
+
+check('a single-image lightbox hides the gallery controls', () => {
+  const html = mount(h(ImageLightbox, { images: ['https://x.test/1.jpg'], alt: 'Maize', onClose: () => {} }));
+  assert.ok(!/aria-label="Next image"/.test(html));
+});
+
+check('the hero banner puts the photo in the background behind a scrim', () => {
+  const html = mount(h(BannerCarousel, {}));
+  assert.match(html, /banner-slide__bg-img/);
+  assert.match(html, /banner-slide__scrim/);
+  // The wording sits in its own layer on top of the photo.
+  assert.match(html, /banner-slide__content/);
+});
+
+check('a seller promo banner is prepended to the carousel with its countdown', () => {
+  const html = mount(h(BannerCarousel, {
+    promoBanners: [{
+      id: 'b1', headline: 'WEEKEND SALE', subline: 'Up to 30% OFF',
+      image: 'https://x.test/banner.jpg', discountPercent: 30,
+      businessName: 'Phiko Trading', endAt: Date.now() + 5 * 3600 * 1000,
+    }],
+  }));
+  assert.match(html, /WEEKEND SALE/);
+  assert.match(html, /Up to 30% OFF/);
+  assert.match(html, /Ends in/);
 });
 
 console.log(`\n${passed} assertions passed.`);

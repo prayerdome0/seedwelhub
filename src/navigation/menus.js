@@ -14,6 +14,7 @@ export const MAIN_MENU = [
     items: [
       { id: 'home', to: '/', icon: '🏠', label: 'Home', end: true },
       { id: 'marketplace', to: '/marketplace', icon: '🛍️', label: 'Marketplace' },
+      { id: 'deals', to: '/deals', icon: '🔥', label: 'Deals & Promotions' },
       { id: 'orders', to: '/orders', icon: '📦', label: 'My Orders', auth: true },
       { id: 'saved', to: '/saved', icon: '❤️', label: 'Saved / Favorites', auth: true },
       { id: 'notifications', to: '/notifications', icon: '🔔', label: 'Notifications', auth: true, badge: 'notifications' },

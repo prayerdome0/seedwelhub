@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Image from '../components/Image';
 import Spinner from '../components/Spinner';
@@ -7,9 +7,14 @@ import StarRating from '../components/StarRating';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import CheckoutForm from '../components/CheckoutForm';
+import ImageLightbox from '../components/ImageLightbox';
+import PromoPrice from '../components/PromoPrice';
+import PromoCountdown from '../components/PromoCountdown';
 import useDocument from '../hooks/useDocument';
 import useStartConversation from '../hooks/useStartConversation';
 import { getProduct } from '../services/productService';
+import { getPromotionsForProduct } from '../services/promotionService';
+import { applyPromotion } from '../utils/promotions';
 import { placeOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -17,8 +22,10 @@ import { formatCurrency } from '../utils/format';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
-  const { data: product, loading, error, notFound, retry } = useDocument(getProduct, id, []);
+  const { data: raw, loading, error, notFound, retry } = useDocument(getProduct, id, []);
   const [activeImage, setActiveImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [promotion, setPromotion] = useState(null);
   const [qty, setQty] = useState(1);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -26,6 +33,17 @@ export default function ProductDetailPage() {
   const { showToast } = useToast();
   const { start: startConversation, starting: startingConversation } = useStartConversation();
   const navigate = useNavigate();
+
+  // The live promotion is fetched separately and re-validated by the service
+  // (schedule + pricing) before it can change what the buyer is charged.
+  useEffect(() => {
+    let cancelled = false;
+    if (!id) return undefined;
+    getPromotionsForProduct(id)
+      .then((promo) => { if (!cancelled) setPromotion(promo); })
+      .catch(() => { if (!cancelled) setPromotion(null); });
+    return () => { cancelled = true; };
+  }, [id]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={retry} />;
@@ -39,6 +57,11 @@ export default function ProductDetailPage() {
       </div>
     );
   }
+
+  // Promotional pricing is merged in here, so the price shown, the checkout
+  // total and the order line item can never disagree with each other.
+  const product = applyPromotion(raw, promotion);
+  const onDeal = Boolean(product.promotion);
 
   const images = product.images?.length ? product.images : product.image ? [product.image] : [];
   const currentImage = images[activeImage];
@@ -113,9 +136,15 @@ export default function ProductDetailPage() {
           {/* Gallery */}
           {images.length > 0 && (
             <div className="gallery">
-              <div className="gallery__main">
+              <button
+                type="button"
+                className="gallery__main gallery__main--zoomable"
+                onClick={() => setLightboxOpen(true)}
+                aria-label="Open full-screen image viewer"
+              >
                 <Image src={currentImage} alt={product.name} />
-              </div>
+                <span className="gallery__zoom-hint" aria-hidden="true">🔍 Tap to enlarge</span>
+              </button>
               {images.length > 1 && (
                 <div className="gallery__thumbs">
                   {images.map((img, i) => (
@@ -131,6 +160,15 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {lightboxOpen && (
+            <ImageLightbox
+              images={images}
+              startIndex={activeImage}
+              alt={product.name}
+              onClose={() => setLightboxOpen(false)}
+            />
           )}
 
           {/* Description */}
@@ -180,8 +218,20 @@ export default function ProductDetailPage() {
             {product.location && <p className="text-muted mt-8">📍 {product.location}</p>}
 
             <div className="buy-box mt-16">
-              <div className="buy-box__price">{formatCurrency(product.price, product.currency)}</div>
+              <PromoPrice product={product} size="lg" />
               {product.priceType && <p className="text-muted">{product.priceType}</p>}
+
+              {onDeal && (
+                <div className="promo-strip">
+                  <div>
+                    <div className="promo-strip__title">🔥 {product.promotion.title}</div>
+                    <div className="promo-strip__note">
+                      Promotional price — applied automatically at checkout.
+                    </div>
+                  </div>
+                  <PromoCountdown endsAt={product.promotion.endAt} className="promo-countdown--lg" />
+                </div>
+              )}
 
               <div className="buy-box__qty">
                 <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
@@ -267,6 +317,40 @@ export default function ProductDetailPage() {
                 <>
                   <dt>Condition</dt>
                   <dd>{product.condition}</dd>
+                </>
+              )}
+              {onDeal && (
+                <>
+                  <dt>Was</dt>
+                  <dd><s>{formatCurrency(product.oldPrice, product.currency)}</s></dd>
+                  <dt>You save</dt>
+                  <dd>
+                    {formatCurrency(product.savings, product.currency)} ({product.discountPercent}%)
+                  </dd>
+                </>
+              )}
+              {sellerName && (
+                <>
+                  <dt>Seller</dt>
+                  <dd>{sellerName}</dd>
+                </>
+              )}
+              {product.category && (
+                <>
+                  <dt>Category</dt>
+                  <dd>{product.category}</dd>
+                </>
+              )}
+              {product.unit && (
+                <>
+                  <dt>Sold per</dt>
+                  <dd>{product.unit}</dd>
+                </>
+              )}
+              {product.location && (
+                <>
+                  <dt>Location</dt>
+                  <dd>{product.location}</dd>
                 </>
               )}
               {product.retailPrice && (

@@ -175,10 +175,89 @@ hero are untouched.
   and per-category preferences live in Settings → Notifications. Background
   delivery uses the FCM service worker; actual push dispatch stays server-side
   (FCM Admin/Cloud Function) with tokens stored in `deviceTokens`.
+- **Promotions & deals:** sellers schedule discounts from the Seller Dashboard →
+  **Promotions** tab (percentage *or* fixed new price, product picker, start/end
+  date & time, promotion image, description, enable/disable, live
+  Was / Now / Save / % preview). Seedwel Hub starts a promotion at its scheduled
+  time, counts it down ("Ends in 2h 35m") and stops it at the end time —
+  expired promotions disappear from every shopper-facing surface automatically.
+  Sellers can also publish a **promotional banner** that rides the same
+  schedule and appears in the homepage hero carousel. The homepage merchandises
+  the results as 🔥 Best Deals, ⚡ Flash Deals (ending within 24h),
+  🏷️ Discounts from 10% Off, 📢 Seller Promotions, 📍 Deals Near You and
+  🆕 New Arrivals, with a full `/deals` catalogue filterable by discount depth.
+  See *Promotion integrity* below for how the pricing is protected.
 - **Admin:** dashboard, users, businesses, products, orders, payments, reports,
   verification, security.
 - **Global:** 404 page + React Error Boundary; every Firebase page has loading /
   empty / error / success / not-found states.
+
+---
+
+## Promotion integrity (promotions are never trusted from the browser)
+
+A promotion decides what a buyer pays, so it is never taken at face value from
+the stored document. Three layers cooperate:
+
+1. **`src/utils/promotions.js`** — pure domain logic and the single source of
+   truth for promotional pricing. `computePricing()` refuses anything that is
+   not a genuine reduction (a "new price" at or above the original, a 0% or
+   negative discount, a discount above 90%, a non-numeric price). Money is
+   rounded to whole units so `Was − Now === Save` always holds on screen.
+2. **`src/services/promotionService.js`** — every read runs each document
+   through `resolvePromotion()`, which **recomputes** the price from
+   `(originalPrice, type, value)` and **re-checks the schedule against the
+   reader's clock**. The stored `status`, `promoPrice` and `savings` fields are
+   ignored. A promotion whose document still says `"active"` but whose end time
+   has passed resolves to `expired` and vanishes from the UI. `applyPromotion()`
+   additionally clamps the "Was" figure to the product's own list price, so a
+   seller cannot inflate the original price after the fact to fake a bigger
+   saving.
+3. **`firestore.rules` → `/promotions`, `/promoBanners`** — the enforcement
+   layer. Only the owning seller (verified against the business document via
+   `ownsBusiness()`) may write, ownership cannot be transferred by an update,
+   and a document is rejected outright unless
+   `0 < promoPrice < originalPrice`, `1 ≤ discountPercent ≤ 90`, and both
+   `startAt` and `endAt` are present.
+
+`npm run verify` runs `scripts/verify-promotions.mjs`, which locks all of the
+above in — including the anti-tamper cases (inflated "Was" price, forged
+`status: active`, tampered `promoPrice`) and every schedule transition.
+
+---
+
+## Email deliverability (verification emails landing in Spam)
+
+The verification screen now tells people to check **Inbox** *and*
+**Spam/Junk**, and offers concrete "can't find it?" guidance. **This is a
+mitigation, not the fix.** Firebase Authentication's default sender
+(`noreply@<project>.firebaseapp.com`) is a shared domain that you do not control
+and cannot authenticate, which is why Gmail and Outlook are quick to filter it.
+
+To actually fix deliverability, move to a custom authenticated sending domain:
+
+1. **Use your own domain** for sending (e.g. `no-reply@seedwelhub.com`) — a real,
+   professional sender address, not a shared Firebase subdomain.
+2. **SPF** — publish a TXT record authorising your sending service's servers.
+3. **DKIM** — publish the provider's public key and enable signing so each
+   message is cryptographically verifiable.
+4. **DMARC** — publish a policy (start at `p=none` with `rua=` reporting, then
+   tighten to `quarantine`/`reject` once SPF+DKIM pass consistently).
+5. **Configure the sender in Firebase:** Authentication → Templates →
+   customise the sender name/address and the reply-to, and (for full control of
+   the template and headers) point the action URL at your own domain.
+6. **Keep the template clean:** a clear subject, real text, few links, no
+   all-caps or spam-trigger phrasing, and a plain-text alternative.
+7. **Rate-limit resends** so a user cannot trigger a burst of identical
+   verification emails — bursts hurt domain reputation.
+8. **Test before trusting it:** send to Gmail, Outlook, Yahoo and a corporate
+   mailbox, and check the results with a seed-test tool (mail-tester or similar)
+   to confirm SPF/DKIM/DMARC all pass.
+
+For full control, send verification mail through a dedicated provider
+(SendGrid, Mailgun, Postmark, SES) from a Cloud Function using
+`generateEmailVerificationLink()` from the Firebase Admin SDK, rather than
+Firebase's built-in sender.
 
 ---
 
