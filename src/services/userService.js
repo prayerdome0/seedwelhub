@@ -9,7 +9,7 @@ const PROFILES = COLLECTIONS.PROFILES;
 // Creates (or reconciles) the Firestore user document that maps 1:1 to the
 // Firebase Auth UID. A normal user can never choose their own role; the role
 // defaults to "user" and is only changed through secure server-side/cloud rules.
-export async function ensureUserDocument(uid, { email, name = '', photoURL = '' } = {}) {
+export async function ensureUserDocument(uid, { email, name = '', photoURL = '', country = '', phone = '' } = {}) {
   const ref = docRef(COL, uid);
   const existing = await getById(COL, uid);
   if (existing) {
@@ -20,7 +20,8 @@ export async function ensureUserDocument(uid, { email, name = '', photoURL = '' 
     uid,
     name: name || '',
     email: email || '',
-    phone: '',
+    phone: phone || '',
+    country: country || '',
     username: '',
     photoURL,
     role: DEFAULT_ROLE,
@@ -38,7 +39,8 @@ export async function ensureUserDocument(uid, { email, name = '', photoURL = '' 
     email: payload.email,
     username: '',
     bio: '',
-    location: '',
+    location: country || '',
+    country: country || '',
     photoURL,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

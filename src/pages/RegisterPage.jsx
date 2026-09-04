@@ -4,12 +4,14 @@ import { createUser, friendlyAuthError, sendVerificationEmail as firebaseSendVer
 import { ensureUserDocument } from '../services/userService';
 import { uploadImageToCloudinary } from '../cloudinary/upload';
 import { useToast } from '../contexts/ToastContext';
+import { COUNTRY_OPTIONS } from '../utils/countries';
 import Avatar from '../components/Avatar';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [photo, setPhoto] = useState(null);
@@ -39,6 +41,10 @@ export default function RegisterPage() {
     event.preventDefault();
     setError('');
 
+    if (!country.trim()) {
+      setError('Please select your country.');
+      return;
+    }
     if (password.length < 6) {
       setError('Your password must be at least 6 characters long.');
       return;
@@ -60,6 +66,8 @@ export default function RegisterPage() {
         email: email.trim(),
         name,
         photoURL: photoUrl,
+        country,
+        phone: phone.trim(),
       });
 
       // 3. Sync display name / photo onto the Auth profile.
@@ -121,6 +129,21 @@ export default function RegisterPage() {
             required
             autoComplete="email"
           />
+        </div>
+        <div className="form__group">
+          <label className="form__label" htmlFor="reg-country">Country</label>
+          <select
+            id="reg-country"
+            className="form__input form__select"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            required
+            autoComplete="country-name"
+          >
+            {COUNTRY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
         </div>
         <div className="form__group">
           <label className="form__label" htmlFor="reg-phone">Phone (optional)</label>
