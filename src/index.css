@@ -194,7 +194,13 @@ ul {
 }
 
 .grid--products {
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 900px) {
+  .grid--products {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .grid--businesses {
@@ -1661,7 +1667,12 @@ a.card:hover {
 .service-card__img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+}
+/* Show the entire product image (letterboxed) instead of cropping it to the square frame. */
+.product-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .product-card__img--empty,
 .service-card__img--empty {
