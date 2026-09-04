@@ -146,6 +146,59 @@ service cloud.firestore {
       allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
 
+    // ---------- promotions ----------
+    // Anyone may READ a promotion (shoppers need the deal), but only the
+    // seller who owns it may write one, and only for their own business.
+    //
+    // The rules pin down ownership and the shape of the document; the pricing
+    // and schedule *meaning* is enforced in src/utils/promotions.js, which the
+    // service layer re-applies on every read. A seller cannot make a shopper
+    // see a price by editing the document, because the numbers are recomputed
+    // from (originalPrice, type, value) client-side on read and re-clamped.
+    match /promotions/{promotionId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && ownsBusiness(request.resource.data.businessId)
+        // A promotion must never be able to raise a price or "discount" to
+        // zero/negative — reject the document outright at the boundary.
+        && request.resource.data.originalPrice is number
+        && request.resource.data.promoPrice is number
+        && request.resource.data.promoPrice > 0
+        && request.resource.data.promoPrice < request.resource.data.originalPrice
+        && request.resource.data.discountPercent >= 1
+        && request.resource.data.discountPercent <= 90
+        // A campaign always has a window, and it always ends after it starts.
+        && request.resource.data.startAt != null
+        && request.resource.data.endAt != null;
+      allow update: if isAdmin()
+        || (signedIn()
+            && resource.data.ownerId == request.auth.uid
+            // Ownership can never be transferred by an update.
+            && request.resource.data.ownerId == resource.data.ownerId
+            && request.resource.data.businessId == resource.data.businessId
+            && request.resource.data.promoPrice > 0
+            && request.resource.data.promoPrice < request.resource.data.originalPrice
+            && request.resource.data.discountPercent >= 1
+            && request.resource.data.discountPercent <= 90);
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    // ---------- promotional banners ----------
+    match /promoBanners/{bannerId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && ownsBusiness(request.resource.data.businessId)
+        && request.resource.data.startAt != null
+        && request.resource.data.endAt != null;
+      allow update: if isAdmin()
+        || (signedIn()
+            && resource.data.ownerId == request.auth.uid
+            && request.resource.data.ownerId == resource.data.ownerId);
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
     // ---------- services ----------
     match /services/{serviceId} {
       allow read: if true;

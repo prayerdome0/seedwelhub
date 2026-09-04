@@ -193,14 +193,21 @@ ul {
   gap: 20px;
 }
 
+/* Compact cards let the grid breathe wider: 2 up on phones, up to 5 on a
+   large desktop, with a tighter gutter than the other grids. */
 .grid--products {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
+@media (min-width: 640px) {
+  .grid--products { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media (min-width: 900px) {
-  .grid--products {
-    grid-template-columns: repeat(4, 1fr);
-  }
+  .grid--products { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1240px) {
+  .grid--products { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 .grid--businesses {
@@ -1245,19 +1252,29 @@ a.card:hover {
   .hero__feature-desc { white-space: normal; }
 }
 
-/* ---------- Banner carousel ---------- */
+/* ---------- Banner carousel ----------
+   The photo is the banner BACKGROUND; the promotional wording sits on top of
+   it behind a dark scrim so the text stays readable over any photograph. */
 .banner-carousel {
   position: relative;
 }
 .banner-carousel__slides {
   display: grid;
+  border-radius: clamp(16px, 2vw, 26px);
+  overflow: hidden;
+  box-shadow: 0 22px 48px rgba(4, 10, 20, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 .banner-slide {
   grid-area: 1 / 1;
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
-  gap: clamp(24px, 5vw, 64px);
-  min-height: clamp(300px, 42vw, 430px);
+  /* Tall enough to feel like a real marketplace hero, capped so it never eats
+     a whole desktop viewport. */
+  min-height: clamp(360px, 46vw, 560px);
+  padding: clamp(28px, 5vw, 72px);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1274,8 +1291,39 @@ a.card:hover {
   transform: translateX(0);
 }
 
+/* Background photo + dimming scrim */
+.banner-slide__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--navy-800, #0b1524);
+}
+.banner-slide__bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Slightly faded/dimmed so the words on top stand out. */
+  filter: brightness(0.66) saturate(1.05);
+  transform: scale(1.04);
+  transition: transform 8s ease-out;
+}
+.banner-slide.is-active .banner-slide__bg-img {
+  transform: scale(1.1); /* slow Ken Burns drift while the slide is shown */
+}
+/* Dark gradient overlay behind the text — strongest on the text side. */
+.banner-slide__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(6, 14, 26, 0.9) 0%, rgba(6, 14, 26, 0.72) 42%, rgba(6, 14, 26, 0.34) 100%),
+    linear-gradient(180deg, rgba(6, 14, 26, 0.5) 0%, rgba(6, 14, 26, 0.18) 45%, rgba(6, 14, 26, 0.72) 100%);
+}
+
 .banner-slide__content {
-  flex: 1;
+  position: relative;
+  z-index: 1;
+  max-width: min(660px, 100%);
   min-width: 0;
 }
 .banner-slide__eyebrow {
@@ -1285,21 +1333,24 @@ a.card:hover {
   letter-spacing: 2px;
   font-size: 13px;
   margin-bottom: 12px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 .banner-slide__title {
-  font-size: clamp(30px, 5vw, 52px);
+  font-size: clamp(30px, 5vw, 56px);
   color: #fff;
   margin-bottom: 14px;
-  line-height: 1.1;
+  line-height: 1.08;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.55);
 }
 .banner-slide__title .accent {
   color: var(--green-light);
 }
 .banner-slide__subtitle {
-  font-size: clamp(16px, 2vw, 20px);
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 26px;
+  font-size: clamp(15px, 1.8vw, 20px);
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 24px;
   max-width: 600px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
 }
 .banner-slide__actions {
   display: flex;
@@ -1307,128 +1358,58 @@ a.card:hover {
   gap: 12px;
 }
 
-.banner-slide__visual {
-  flex: 0 0 clamp(280px, 38vw, 500px);
-  width: clamp(280px, 38vw, 500px);
-  align-self: center;
-  display: flex;
-  justify-content: center;
-}
-
-/* Real product photography used in the hero. The brand lockup is layered on
-   top so the source photo remains authentic and the logo stays legible. */
-.banner-photo {
-  position: relative;
-  isolation: isolate;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  border-radius: 26px;
-  background: var(--navy-800);
-  box-shadow: 0 22px 48px rgba(4, 10, 20, 0.38), 0 0 0 8px rgba(255, 255, 255, 0.05);
-  transform: rotate(2deg);
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
-}
-.banner-photo:hover {
-  transform: rotate(0deg) translateY(-3px);
-  box-shadow: 0 26px 56px rgba(4, 10, 20, 0.44), 0 0 0 8px rgba(53, 197, 82, 0.08);
-}
-.banner-photo__image {
+/* Small contextual tag (bottom-right) + brand lockup (top-right) */
+.banner-slide__tag {
   position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.8s ease;
-}
-.banner-slide.is-active .banner-photo__image {
-  animation: bannerPhotoZoom 8s ease-out both;
-}
-.banner-photo__shade {
-  position: absolute;
-  inset: 0;
+  right: clamp(16px, 3vw, 32px);
+  bottom: clamp(16px, 3vw, 28px);
   z-index: 1;
-  background: linear-gradient(180deg, rgba(5, 14, 25, 0.08) 22%, rgba(5, 14, 25, 0.7) 100%);
-  pointer-events: none;
-}
-.banner-photo__brand {
-  position: absolute;
-  z-index: 2;
-  top: 16px;
-  left: 16px;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 14px 8px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--navy);
-  box-shadow: 0 6px 18px rgba(4, 10, 20, 0.2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.2px;
-}
-.banner-photo__brand img {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-}
-.banner-photo__brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-  gap: 2px;
-}
-.banner-photo__brand-word {
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.1px;
-}
-.banner-photo__brand-word strong {
-  color: var(--green-dark);
-}
-.banner-photo__brand-tag {
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: var(--navy-600);
-  white-space: nowrap;
-}
-.banner-photo__label {
-  position: absolute;
-  z-index: 2;
-  right: 16px;
-  bottom: 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 11px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 8px;
+  padding: 7px 14px;
   border-radius: var(--radius-pill);
-  background: rgba(16, 31, 54, 0.74);
+  background: rgba(6, 14, 26, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(6px);
   color: #fff;
   font-size: 12px;
-  font-weight: 700;
-  backdrop-filter: blur(8px);
+  font-weight: 600;
 }
-.banner-photo__label-dot {
+.banner-slide__tag-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--green-light);
-  box-shadow: 0 0 0 3px rgba(53, 197, 82, 0.18);
+}
+.banner-slide__brand {
+  position: absolute;
+  top: clamp(16px, 3vw, 28px);
+  right: clamp(16px, 3vw, 32px);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 14px 7px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+}
+.banner-slide__brand img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 
 /* Staggered entrance for the active banner */
 .banner-slide__eyebrow,
 .banner-slide__title,
 .banner-slide__subtitle,
-.banner-slide__actions,
-.banner-slide__visual {
+.banner-slide__actions {
   opacity: 0;
   transform: translateY(18px);
   transition: opacity 0.55s ease, transform 0.55s ease;
@@ -1453,7 +1434,7 @@ a.card:hover {
   transform: none;
   transition-delay: 0.28s;
 }
-.banner-slide.is-active .banner-slide__visual {
+.banner-slide.is-active .banner-slide__tag {
   opacity: 1;
   transform: none;
   transition-delay: 0.18s;
@@ -1603,30 +1584,26 @@ a.card:hover {
 
 @media (max-width: 860px) {
   .banner-slide {
-    flex-direction: column;
-    text-align: center;
-    gap: 20px;
-    min-height: 0;
+    /* On phones the text sits at the bottom of the photo, full width. */
+    align-items: flex-end;
+    min-height: clamp(340px, 74vw, 460px);
+    padding: 22px 20px 26px;
   }
   .banner-slide__content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    max-width: 100%;
   }
-  .banner-slide__subtitle {
-    max-width: 480px;
+  .banner-slide__scrim {
+    background:
+      linear-gradient(180deg, rgba(6, 14, 26, 0.45) 0%, rgba(6, 14, 26, 0.3) 30%, rgba(6, 14, 26, 0.88) 100%);
   }
-  .banner-slide__actions {
-    justify-content: center;
+  .banner-slide__brand {
+    top: 14px;
+    right: 14px;
+    font-size: 12px;
+    padding: 5px 11px 5px 6px;
   }
-  .banner-slide__visual {
-    order: 2;
-    flex: 0 1 min(100%, 380px);
-    width: min(100%, 380px);
-  }
-  .banner-photo {
-    transform: rotate(0deg);
-  }
+  .banner-slide__brand img { width: 20px; height: 20px; }
+  .banner-slide__tag { display: none; }
   .banner-carousel__nav {
     margin-top: 16px;
   }
@@ -1655,20 +1632,29 @@ a.card:hover {
   border-color: var(--green);
 }
 
-/* ---------- Product / business cards ---------- */
+/* ---------- Product / business cards ----------
+   Compact by design: smaller type and a shorter image frame so noticeably
+   more products fit on screen. The media box uses `contain`, so the whole
+   photo always sits inside the card's four corners — never cropped, never
+   overflowing. */
+.product-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* nothing escapes the rounded corners */
+}
 .product-card__media,
 .service-card__media {
   position: relative;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   background: var(--navy-soft);
   overflow: hidden;
+  padding: 8px;
 }
 .product-card__img,
 .service-card__img {
   width: 100%;
   height: 100%;
 }
-/* Show the entire product image (letterboxed) instead of cropping it to the square frame. */
 .product-card__media img {
   width: 100%;
   height: 100%;
@@ -1680,45 +1666,74 @@ a.card:hover {
   align-items: center;
   justify-content: center;
   color: var(--text-soft);
-  font-size: 14px;
+  font-size: 13px;
+}
+/* Discount flag on promoted products */
+.product-card__deal-flag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 .product-card__body,
 .service-card__body {
-  padding: 14px 16px 16px;
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 .product-card__title,
 .service-card__title {
-  font-size: 16px;
-  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.3;
+  margin-bottom: 2px;
+  /* Two lines maximum keeps every card in a row the same height. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .product-card__badge {
-  margin-bottom: 8px;
+  font-size: 10px;
 }
 .product-card__price {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--navy);
-  margin: 4px 0;
+  margin: 2px 0;
 }
 .product-card__seller,
 .service-card__provider {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .product-card__location,
 .service-card__location {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .product-card__meta,
 .service-card__meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 4px;
+  font-size: 12px;
 }
 .service-card__rate {
   font-size: 18px;
@@ -6026,4 +6041,333 @@ body.chat-workspace-open .app-main {
 .loc-group-title .count {
   font-weight: 600;
   color: var(--text-soft);
+}
+
+/* =====================================================================
+   Promotions — deal pricing, countdowns, deal sections, promo banners
+   ===================================================================== */
+
+/* Visually hidden but available to screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Was / Now / Save price block ---------- */
+.promo-price {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0;
+}
+.promo-price__row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.promo-price__now {
+  font-weight: 800;
+  color: var(--navy);
+  font-size: 16px;
+  line-height: 1.2;
+}
+.promo-price.is-deal .promo-price__now {
+  color: #b91c1c;
+}
+.promo-price__was {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.promo-price__save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.promo-price__pct {
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+  font-weight: 800;
+}
+.promo-price--sm .promo-price__now { font-size: 15px; }
+.promo-price--lg .promo-price__now { font-size: clamp(26px, 3.4vw, 34px); }
+.promo-price--lg .promo-price__was { font-size: 16px; }
+.promo-price--lg .promo-price__save { font-size: 14px; }
+
+/* ---------- Countdown pill ---------- */
+.promo-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.promo-countdown--card { align-self: flex-start; margin-top: 2px; }
+.promo-countdown--banner {
+  margin-bottom: 18px;
+  padding: 6px 14px;
+  font-size: 13px;
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+}
+.promo-countdown--lg { font-size: 14px; padding: 6px 14px; }
+
+/* ---------- Deal sections on the homepage ---------- */
+.deal-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.deal-section__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: clamp(18px, 2.2vw, 24px);
+  margin: 0;
+}
+.deal-section__title-icon { font-size: 1.1em; line-height: 1; }
+.deal-section__sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+/* ---------- Seller promotion cards ---------- */
+.promo-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.promo-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.promo-card__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--navy-soft);
+  overflow: hidden;
+}
+.promo-card__media img { width: 100%; height: 100%; object-fit: cover; }
+.promo-card__flag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  background: #dc2626;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.promo-card__body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.promo-card__title { font-size: 15px; margin: 0; }
+.promo-card__seller { font-size: 12px; color: var(--text-muted); }
+.promo-card__desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- Product-detail promotion strip ---------- */
+.promo-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.07), rgba(53, 197, 82, 0.07));
+}
+.promo-strip__title { font-weight: 700; font-size: 14px; color: var(--navy); }
+.promo-strip__note { font-size: 12px; color: var(--text-muted); }
+
+/* ---------- Gallery lightbox (product images) ---------- */
+.lightbox--gallery .lightbox__stage img {
+  max-width: 92vw;
+  max-height: 78vh;
+  object-fit: contain;
+  cursor: default;
+}
+.lightbox__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox__nav:hover { background: rgba(0, 0, 0, 0.7); }
+.lightbox__nav--prev { left: 16px; }
+.lightbox__nav--next { right: 16px; }
+.lightbox__counter {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+}
+.lightbox__thumbs {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  max-width: 92vw;
+  overflow-x: auto;
+  padding: 6px;
+}
+.lightbox__thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  padding: 0;
+}
+.lightbox__thumb.is-active { border-color: var(--green-light); }
+.lightbox__thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* The main product image advertises that it opens full screen. */
+.gallery__main { position: relative; }
+.gallery__main--zoomable { cursor: zoom-in; }
+.gallery__zoom-hint {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: rgba(6, 14, 26, 0.62);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .lightbox__nav { width: 38px; height: 38px; font-size: 22px; }
+  .lightbox__thumb { width: 44px; height: 44px; }
+}
+
+/* ---------- Seller "Create Promotion" form ---------- */
+.promo-picker {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.promo-picker__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+}
+.promo-picker__item:hover { border-color: var(--border); }
+.promo-picker__item.is-selected {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.promo-picker__item input { width: 17px; height: 17px; accent-color: var(--green); }
+.promo-picker__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.promo-picker__price { font-weight: 700; color: var(--navy); white-space: nowrap; }
+
+.promo-tiers { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.promo-preview {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--green);
+  background: var(--green-soft);
+}
+.promo-preview__title { margin: 0 0 10px; font-size: 14px; }
+.promo-preview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+.promo-preview__grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 16px;
+}
+.promo-preview__grid span { font-size: 12px; }
+
+/* ---------- Email verification guidance ---------- */
+.verify-tips {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.verify-tips__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--navy);
+}
+.verify-tips__list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--text-muted);
 }

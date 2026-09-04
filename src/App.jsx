@@ -13,6 +13,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const DealsPage = lazy(() => import('./pages/DealsPage'));
 const ServicesPage = lazy(() => import('./pages/ServicesPage'));
 const ServiceDetailPage = lazy(() => import('./pages/ServiceDetailPage'));
 const BusinessesPage = lazy(() => import('./pages/BusinessesPage'));
@@ -116,6 +117,8 @@ export default function App() {
             <Route path="/marketplace" element={<MarketplacePage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
+            <Route path="/deals" element={<DealsPage />} />
+            <Route path="/promotions" element={<Navigate to="/deals" replace />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/service/:id" element={<ServiceDetailPage />} />
             <Route path="/businesses" element={<BusinessesPage />} />

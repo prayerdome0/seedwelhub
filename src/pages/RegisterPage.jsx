@@ -76,7 +76,7 @@ export default function RegisterPage() {
       // 4. Send verification email.
       await firebaseSendVerification().catch(() => {});
 
-      showToast('Account created! Please check your email to verify.', 'success');
+      showToast("Account created! Check your email inbox — and your Spam/Junk folder — for the verification link.", 'success');
       navigate('/verify-email');
     } catch (err) {
       setError(friendlyAuthError(err));

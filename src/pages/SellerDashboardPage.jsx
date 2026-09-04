@@ -57,6 +57,7 @@ import { getServicesByBusiness, updateService } from '../services/serviceService
 import PaymentSettingsTab from './seller/PaymentSettingsTab';
 import PaymentsTab from './seller/PaymentsTab';
 import CustomersTab from './seller/CustomersTab';
+import PromotionsTab from './seller/PromotionsTab';
 import { uploadImageToCloudinary } from '../cloudinary/upload';
 import {
   BUSINESS_CATEGORIES,
@@ -94,6 +95,7 @@ const TABS = [
   { id: 'payments', label: 'Payments' },
   { id: 'customers', label: 'Customers' },
   { id: 'products', label: 'Products' },
+  { id: 'promotions', label: 'Promotions' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'import', label: 'Bulk import (CSV)' },
   { id: 'currency', label: 'Currency' },
@@ -382,6 +384,7 @@ export default function SellerDashboardPage() {
       {tab === 'receipts' && <ReceiptsTab business={business} />}
       {tab === 'payments' && <PaymentsTab business={business} />}
       {tab === 'customers' && <CustomersTab business={business} />}
+      {tab === 'promotions' && <PromotionsTab user={user} business={business} />}
       {tab === 'payment-settings' && <PaymentSettingsTab user={user} business={business} />}
       {tab === 'products' && (
         <ProductsTab

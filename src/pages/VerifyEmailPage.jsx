@@ -41,7 +41,7 @@ export default function VerifyEmailPage() {
     try {
       await sendVerificationEmail();
       setStatus('sent');
-      setMessage('Verification email sent. Please check your inbox.');
+      setMessage('Verification email sent. Check your Inbox — and your Spam/Junk folder too.');
     } catch (err) {
       setStatus('error');
       setMessage(friendlyAuthError(err));
@@ -76,11 +76,25 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="auth-card">
-      <h1 className="auth-card__title">Verify your email</h1>
+      <h1 className="auth-card__title">Check your email</h1>
       <p className="auth-card__subtitle">
-        We sent a verification link to <strong>{user.email}</strong>. Click the
-        link in your inbox to activate your Seedwel Hub account.
+        We've sent a verification link to <strong>{user.email}</strong>. Please
+        check your <strong>Inbox</strong>. If you don't see it, check your{' '}
+        <strong>Spam/Junk</strong> folder as well.
       </p>
+
+      {/* Deliverability is the real fix (SPF/DKIM/DMARC on a custom sending
+          domain — see README). Until that lands, telling people exactly where
+          to look prevents most "I never got the email" support requests. */}
+      <div className="verify-tips">
+        <p className="verify-tips__title">Can't find it?</p>
+        <ul className="verify-tips__list">
+          <li>Search your mailbox for <strong>Seedwel Hub</strong>.</li>
+          <li>Check the <strong>Spam</strong>, <strong>Junk</strong> or <strong>Promotions</strong> tab.</li>
+          <li>Mark it <strong>Not spam</strong> so future emails reach your inbox.</li>
+          <li>Wait a minute, then use <strong>Send Verification Email</strong> again.</li>
+        </ul>
+      </div>
 
       {verified ? (
         <div className="form__msg form__msg--success">Your email is verified. You're all set!</div>

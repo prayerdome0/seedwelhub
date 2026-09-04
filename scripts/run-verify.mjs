@@ -17,6 +17,7 @@ const UNIT_SUITES = [
   '/scripts/verify-navigation.mjs',
   '/scripts/verify-routing.mjs',
   '/scripts/verify-security.mjs',
+  '/scripts/verify-promotions.mjs',
   '/scripts/verify-render.mjs',
 ];
 

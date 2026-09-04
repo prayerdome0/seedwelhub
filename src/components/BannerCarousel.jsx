@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import BrandPhoto from './BrandPhoto';
+import { REAL_LOGO } from '../assets';
+import PromoCountdown from './PromoCountdown';
 import produceMarket from '../assets/banners/produce-market.jpg';
 import coffeeBeans from '../assets/banners/coffee-beans.jpg';
 import curatedGoods from '../assets/banners/curated-goods.jpg';
@@ -117,6 +118,26 @@ const SLIDES = [
   },
 ];
 
+// Maps a seller's promotional banner document onto the same slide shape the
+// built-in brand banners use, so both render through one code path.
+function toSlide(banner) {
+  return {
+    id: `promo-${banner.id}`,
+    isPromo: true,
+    eyebrow: banner.discountPercent ? `\u{1F525} Up to ${banner.discountPercent}% OFF` : '\u{1F525} Promotion',
+    title: banner.headline || 'Special offer',
+    subtitle: banner.subline || '',
+    cta: [
+      { label: banner.ctaLabel || 'Shop now', to: banner.ctaTo || '/deals', variant: 'btn--primary' },
+      { label: 'All deals', to: '/deals', variant: 'btn--hero' },
+    ],
+    image: banner.image,
+    imageLabel: banner.businessName || '',
+    objectPosition: 'center',
+    endsAt: banner.endAt,
+  };
+}
+
 /**
  * Auto-advancing hero banner carousel — one full-width professional banner per
  * theme (Buy, Sell, Services, Connect, Manage & Grow).
@@ -127,14 +148,23 @@ const SLIDES = [
  *   vertical page scrolling.
  * - Exposes arrows + dots for keyboard and mouse users.
  */
-export default function BannerCarousel() {
-  const count = SLIDES.length;
+export default function BannerCarousel({ promoBanners = [] }) {
+  // Seller promotional banners are prepended so a live campaign is the first
+  // thing a visitor sees, then the evergreen brand banners follow.
+  const slides = useMemo(() => [...promoBanners.map(toSlide), ...SLIDES], [promoBanners]);
+  const count = slides.length;
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
   const timerRef = useRef(null);
   // Touch / pointer swipe tracking (started when a horizontal intent is seen).
   const gestureRef = useRef(null);
+
+  // A campaign banner arriving (or expiring) must never leave the carousel
+  // pointing past the end of the list.
+  useEffect(() => {
+    setIndex((current) => (current < count ? current : 0));
+  }, [count]);
 
   const go = useCallback(
     (nextIndex) => {
@@ -180,11 +210,7 @@ export default function BannerCarousel() {
   const onPointerDown = (event) => {
     if (event.pointerType === 'mouse') return;
     pause();
-    gestureRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      active: true,
-    };
+    gestureRef.current = { x: event.clientX, y: event.clientY, active: true };
     // Keep receiving the pointerup even when the finger leaves the banner
     // mid-swipe, so the gesture always completes cleanly.
     try {
@@ -221,9 +247,7 @@ export default function BannerCarousel() {
     if (typeof window !== 'undefined' && 'PointerEvent' in window) return;
     pause();
     const touch = event.touches?.[0];
-    if (touch) {
-      gestureRef.current = { x: touch.clientX, y: touch.clientY, active: true };
-    }
+    if (touch) gestureRef.current = { x: touch.clientX, y: touch.clientY, active: true };
   };
 
   const onTouchEnd = (event) => {
@@ -259,21 +283,40 @@ export default function BannerCarousel() {
       onTouchEnd={onTouchEnd}
     >
       <div className="banner-carousel__slides">
-        {SLIDES.map((slide, i) => (
+        {slides.map((slide, i) => (
           <div
             key={slide.id}
-            className={`banner-slide ${i === index ? 'is-active' : ''}`}
+            className={`banner-slide ${i === index ? 'is-active' : ''} ${slide.isPromo ? 'banner-slide--promo' : ''}`}
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} of ${count}`}
             aria-hidden={i !== index}
           >
+            {/* The photo IS the banner background. It is dimmed by the
+                gradient scrim below so the promotional wording on top stays
+                legible on any photo, on any screen size. */}
+            <div className="banner-slide__bg" aria-hidden="true">
+              <img
+                src={slide.image}
+                alt=""
+                className="banner-slide__bg-img"
+                style={{ objectPosition: slide.objectPosition }}
+                draggable={false}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+              />
+              <div className="banner-slide__scrim" />
+            </div>
+
             <div className="banner-slide__content">
               <p className="banner-slide__eyebrow">
                 <span aria-hidden="true">◆</span> {slide.eyebrow}
               </p>
               <h1 className="banner-slide__title">{slide.title}</h1>
               <p className="banner-slide__subtitle">{slide.subtitle}</p>
+              {slide.endsAt && (
+                <PromoCountdown endsAt={slide.endsAt} className="promo-countdown--banner" />
+              )}
               <div className="banner-slide__actions">
                 {slide.cta.map((cta) => (
                   <Link
@@ -287,13 +330,19 @@ export default function BannerCarousel() {
                 ))}
               </div>
             </div>
-            <div className="banner-slide__visual">
-              <BrandPhoto
-                src={slide.image}
-                alt={slide.imageAlt}
-                label={slide.imageLabel}
-                objectPosition={slide.objectPosition}
-              />
+
+            {slide.imageLabel && (
+              <div className="banner-slide__tag">
+                <span className="banner-slide__tag-dot" aria-hidden="true" />
+                {slide.imageLabel}
+              </div>
+            )}
+
+            <div className="banner-slide__brand" aria-label="Seedwel Hub">
+              <img src={REAL_LOGO} alt="" draggable={false} />
+              <span>
+                Seedwel <strong>Hub</strong>
+              </span>
             </div>
           </div>
         ))}
@@ -309,7 +358,7 @@ export default function BannerCarousel() {
           <span aria-hidden="true">‹</span>
         </button>
         <div className="banner-carousel__dots" role="tablist" aria-label="Choose banner">
-          {SLIDES.map((slide, i) => (
+          {slides.map((slide, i) => (
             <button
               key={slide.id}
               type="button"
