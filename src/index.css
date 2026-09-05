@@ -3991,6 +3991,9 @@ body.chat-workspace-open .app-main {
 }
 
 .chat-app {
+  /* How far the message input sits above the bottom edge of the frame.
+     The composer's bottom padding and the "↓ Latest" pill both track it. */
+  --chat-composer-lift: 60px;
   flex: 1;
   min-height: 0;
   min-width: 0;
@@ -4588,7 +4591,7 @@ body.chat-workspace-open .app-main {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 92px;
+  bottom: calc(92px + var(--chat-composer-lift, 0px));
   z-index: 9;
   border: none;
   background: var(--navy);
@@ -4611,7 +4614,7 @@ body.chat-workspace-open .app-main {
   flex-shrink: 0;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 10px calc(8px + var(--chat-composer-lift, 0px) + env(safe-area-inset-bottom, 0px));
   position: relative;
   z-index: 8;
 }
@@ -5672,8 +5675,8 @@ body.chat-workspace-open .app-main {
   .chat-bubble__quote-text { max-width: 200px; }
   .chat-body { padding: 12px 10px 14px; }
   .chat-aside { width: 100%; border-left: none; }
-  .chat-jump-latest { bottom: 86px; font-size: 12px; }
-  .chat-composer { padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .chat-jump-latest { bottom: calc(86px + var(--chat-composer-lift, 0px)); font-size: 12px; }
+  .chat-composer { padding: 6px 8px calc(6px + var(--chat-composer-lift, 0px) + env(safe-area-inset-bottom, 0px)); }
   .chat-composer__icon { width: 38px; height: 38px; font-size: 19px; }
   .emoji-picker__grid { max-height: 210px; grid-template-columns: repeat(7, 1fr); }
   .lightbox__stage img { max-width: 96vw; max-height: 82vh; }
