@@ -149,7 +149,24 @@ hero are untouched.
   visible below a "Other locations" divider. A location bar shows
   "Showing {type} near {place}", category/search filters keep working, and
   precise coordinates are never stored, displayed or exposed (only the coarse
-  town/country is kept, in localStorage).
+  town/country is kept, in localStorage). Because no coordinates are stored the
+  Marketplace's **Distance** filter maps the requested radius onto the coarse
+  tiers it *can* honour — "Anywhere (nearest first)", "Nearest area", "Same
+  city/town", "Same region", "Same country" — and listings render under
+  labelled distance-band headings ("Near you", "Same city/town", …) so buyers
+  always see how close a product is, never a fake precise-km figure.
+- **Seller (same account, every user):** there is no permanent buyer/seller
+  role — any account can buy and can start selling. A clear **Start Selling**
+  entry sits in the main menu (Marketplace, Account hub and the buyers'
+  Marketplace banner for signed-in users who don't sell yet). Seller setup
+  captures and confirms the seller's location (browser detection or manual
+  city/area) on the same account — no second account is ever created — then
+  unlocks the Seller Dashboard. The Seller Dashboard opens on a new
+  **Overview** tab that summarises Sales & earnings (money received from
+  receipts, order value, orders in progress, awaiting payment) with quick
+  links into every working area; Add/Edit Product now includes a live listing
+  preview before publishing, and new products automatically inherit the
+  seller's location so nearby buyers find them first.
 - **Commerce:** orders, order detail, order tracking, payments, payment detail,
   quotations, invoices, receipts, document QR verification.
 - **Communication:** messages, conversations, groups, group chat — powered by a

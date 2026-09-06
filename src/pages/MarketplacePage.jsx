@@ -9,10 +9,10 @@ import { useToast } from '../contexts/ToastContext';
 import { useMarketLocation } from '../contexts/LocationContext';
 import { marketplaceProducts } from '../services/productService';
 import { BUSINESS_CATEGORIES } from '../utils/constants';
-import { rankByLocation } from '../utils/location';
+import { PROXIMITY_OPTIONS, proximityOption, rankGroups } from '../utils/location';
 
 export default function MarketplacePage() {
-  const { user } = useAuth();
+  const { user, isSeller, businessesLoading } = useAuth();
   const { showToast } = useToast();
   const { place, label } = useMarketLocation();
   const [items, setItems] = useState([]);
@@ -21,6 +21,9 @@ export default function MarketplacePage() {
   const [cursor, setCursor] = useState(null);
   const [done, setDone] = useState(false);
   const [category, setCategory] = useState('');
+  // "Distance" filter. Translated into the coarse proximity tiers the data can
+  // support (see utils/location.js) — never a fake precise km figure.
+  const [band, setBand] = useState('any');
   const [loadMoreLoading, setLoadMoreLoading] = useState(false);
 
   const loadFirst = async (cat = category) => {
@@ -64,13 +67,20 @@ export default function MarketplacePage() {
     }
   };
 
-  // Location-aware ranking: listings in the user's area/town come first, then
-  // same region/country, and finally everywhere else — nothing is ever hidden.
-  const ranked = useMemo(
-    () => (place ? rankByLocation(items, place) : null),
-    [items, place]
+  // Distance-aware grouping. When the user has a location we split the loaded
+  // listings into ordered proximity bands ("Near you" → "Other locations") and
+  // narrow the set to the chosen radius. Without a location there is nothing to
+  // rank against, so listings render as one flat grid (nearest-first has no
+  // meaning yet) and we gently prompt the user to set one.
+  const proximity = useMemo(
+    () => (place ? rankGroups(items, place, band) : null),
+    [items, place, band]
   );
-  const nearCount = ranked ? ranked.near.length : 0;
+  const showGroups = Boolean(place && proximity && proximity.groups.length);
+  const hasNearby = proximity
+    ? proximity.groups.some((g) => g.tier <= 1)
+    : false;
+  const activeOption = proximity ? proximity.option : proximityOption(band);
 
   const renderGrid = (list) => (
     <div className="grid grid--products">
@@ -87,8 +97,52 @@ export default function MarketplacePage() {
         <p className="page__subtitle">Discover products from businesses across Seedwel Hub.</p>
       </div>
 
+      {/* Every account can both buy and sell — surface Start Selling clearly for
+          signed-in buyers who are not sellers yet. */}
+      {user && !isSeller && !businessesLoading && (
+        <div className="sell-cta" role="region" aria-label="Start selling">
+          <div className="sell-cta__icon" aria-hidden="true">🚀</div>
+          <div className="sell-cta__body">
+            <strong>You can sell here too.</strong>
+            <span>Your Seedwel account works for buying and selling — set up a store in a few minutes.</span>
+          </div>
+          <Link to="/sell" className="btn btn--primary btn--sm sell-cta__action">Start Selling</Link>
+        </div>
+      )}
+
       {/* Location-aware marketplace controls */}
       <LocationBar noun="products" />
+
+      {/* Distance filter */}
+      <div className="mkt-controls">
+        <label className="mkt-controls__label" htmlFor="proximity-select">
+          <span className="mkt-controls__label-text">Distance</span>
+          <select
+            id="proximity-select"
+            className="form__select form__select--sm mkt-controls__select"
+            value={band}
+            onChange={(event) => setBand(event.target.value)}
+          >
+            {PROXIMITY_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        {place && (
+          <span className="mkt-controls__hint">
+            {activeOption.id === 'any'
+              ? `Nearest first — showing listings from all locations near ${label} and beyond.`
+              : `${activeOption.helper}.`}
+          </span>
+        )}
+        {!place && (
+          <span className="mkt-controls__hint">
+            {band === 'any'
+              ? 'Set your location below to surface nearby listings first.'
+              : 'Choose a location below so the distance filter can show matching listings.'}
+          </span>
+        )}
+      </div>
 
       {/* Category filter */}
       <div className="chip-row mb-24">
@@ -120,27 +174,48 @@ export default function MarketplacePage() {
 
       {!loading && !error && items.length > 0 && (
         <>
-          {place && nearCount === 0 && (
-            <p className="loc-results-note">
-              No products found near <strong>{label}</strong> yet — showing products from other
-              locations below.
-            </p>
+          {/* No items remain after the distance filter is applied. */}
+          {place && proximity && proximity.groups.length === 0 && band !== 'any' && (
+            <EmptyState
+              title={`No products ${activeOption.label.toLowerCase()}`}
+              message={`Nothing within this distance of ${label}. Try a wider radius or “Anywhere (nearest first)”.`}
+            />
           )}
 
-          {ranked && ranked.near.length > 0 ? (
+          {showGroups && (
             <>
-              {renderGrid(ranked.near)}
-              {ranked.rest.length > 0 && (
-                <>
-                  <p className="loc-group-title">
-                    Other locations <span className="count">({ranked.rest.length})</span>
-                  </p>
-                  {renderGrid(ranked.rest)}
-                </>
+              {proximity.hidden > 0 && (
+                <p className="loc-results-note">
+                  Showing {proximity.groups.reduce((sum, g) => sum + g.items.length, 0)} of {items.length}
+                  {' '}products within “{activeOption.label}” — {proximity.hidden} from further away are hidden by the filter.
+                </p>
               )}
+              {!hasNearby && (
+                <p className="loc-results-note">
+                  No products found near <strong>{label}</strong> yet — listings below are from other locations.
+                </p>
+              )}
+              {proximity.groups.map((group) => (
+                <div key={group.tier}>
+                  <p className="loc-group-title">
+                    {group.label} <span className="count">({group.items.length})</span>
+                  </p>
+                  {renderGrid(group.items)}
+                </div>
+              ))}
             </>
-          ) : (
-            renderGrid(items)
+          )}
+
+          {/* No location set yet (or nothing ranked): flat list + gentle prompt. */}
+          {!showGroups && (
+            <>
+              {!place && band !== 'any' && (
+                <p className="loc-results-note">
+                  Showing all products for now — set your location to filter by distance.
+                </p>
+              )}
+              {renderGrid(items)}
+            </>
           )}
 
           {!done && (
@@ -159,7 +234,8 @@ export default function MarketplacePage() {
       {!user && !loading && (
         <p className="text-center text-muted mt-32">
           <Link to="/login">Log in</Link> to place orders.{" "}
-          <Link to="/sell">Start selling</Link> on Seedwel Hub.
+          <Link to="/register">Create a free account</Link>, then <Link to="/sell">Start Selling</Link> — one
+          account for buying and selling.
         </p>
       )}
     </div>

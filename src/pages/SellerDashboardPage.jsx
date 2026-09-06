@@ -87,6 +87,7 @@ import {
 } from '../utils/csv';
 
 const TABS = [
+  { id: 'overview', label: 'Overview' },
   { id: 'channels', label: 'Where you sell' },
   { id: 'orders', label: 'Orders' },
   { id: 'quotations', label: 'Quotations' },
@@ -240,7 +241,7 @@ export default function SellerDashboardPage() {
   const validTabs = TABS.map((t) => t.id);
   const tabParam = searchParams.get('tab');
   const [tab, setTab] = useState(
-    validTabs.includes(tabParam) ? tabParam : 'channels'
+    validTabs.includes(tabParam) ? tabParam : 'overview'
   );
   const [businessId, setBusinessId] = useState('');
 
@@ -253,7 +254,10 @@ export default function SellerDashboardPage() {
 
   const changeTab = (next) => {
     setTab(next);
-    setSearchParams(next === 'channels' ? {} : { tab: next }, { replace: true });
+    setSearchParams(
+      next === 'channels' || next === 'overview' ? {} : { tab: next },
+      { replace: true }
+    );
   };
 
   const businesses = useAsync(
@@ -377,6 +381,15 @@ export default function SellerDashboardPage() {
         ))}
       </div>
 
+      {tab === 'overview' && (
+        <OverviewTab
+          user={user}
+          business={business}
+          stats={stats}
+          productCount={productList.length}
+          lowStock={inventoryList.filter(isLowStock).length}
+        />
+      )}
       {tab === 'channels' && <ChannelsTab business={business} stats={stats} />}
       {tab === 'orders' && <OrdersTab user={user} business={business} />}
       {tab === 'quotations' && <QuotationsTab business={business} user={user} />}
@@ -591,6 +604,147 @@ function StatCard({ label, value, hint }) {
       <strong className="stat-card__value">{value}</strong>
       {hint && <span className="stat-card__hint">{hint}</span>}
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------- overview */
+
+// Seller landing tab. Summarises sales & earnings for {business.name} and gives
+// one-click shortcuts into every working area of the dashboard. Everything
+// here is derived from the live receipts + orders of this business only.
+function OverviewTab({ user, business, productCount, lowStock }) {
+  const currency = currencyCode(business?.currency);
+
+  const receipts = useAsync(
+    () => (business?.id ? getReceiptsByBusiness(business.id) : Promise.resolve([])),
+    [business?.id]
+  );
+  const orders = useAsync(
+    () => (business?.id ? getOrdersByBusiness(business.id, 200) : Promise.resolve([])),
+    [business?.id]
+  );
+
+  if (!business) return null;
+
+  const loading = receipts.loading || orders.loading;
+  const error = receipts.error || orders.error;
+
+  const receiptList = receipts.data || [];
+  const orderList = orders.data || [];
+
+  const received = receiptList.reduce((sum, r) => sum + num(r.amount), 0);
+  const orderValue = orderList.reduce((sum, o) => sum + num(o.total), 0);
+  const openOrders = orderList.filter((o) => {
+    const st = String(o.status || '').toLowerCase();
+    return st !== 'delivered' && st !== 'cancelled';
+  });
+  const pendingPayment = orderList.filter(
+    (o) => String(o.paymentStatus || '').toLowerCase() !== 'confirmed'
+  );
+
+  const quickLinks = [
+    { tab: 'products', label: 'Add product', icon: '➕', desc: productCount > 0 ? `${productCount} live` : 'No products yet' },
+    { tab: 'inventory', label: 'Inventory', icon: '📦', desc: lowStock > 0 ? `${lowStock} low stock` : 'Stock healthy' },
+    { tab: 'import', label: 'Bulk import (CSV)', icon: '📥', desc: 'Upload many at once' },
+    { tab: 'quotations', label: 'Quotations', icon: '🧾', desc: 'Price a sale' },
+    { tab: 'orders', label: 'Orders', icon: '🛍️', desc: openOrders.length ? `${openOrders.length} open` : 'No open orders' },
+    { tab: 'promotions', label: 'Promotions', icon: '🏷️', desc: 'Discounts & deals' },
+    { tab: 'channels', label: 'Where you sell', icon: '📣', desc: 'Share your store' },
+    { tab: 'payment-settings', label: 'Payment details', icon: '💳', desc: 'How buyers pay you' },
+  ];
+
+  return (
+    <>
+      <div className="panel mt-16">
+        <div className="overview-head">
+          <div className="overview-head__copy">
+            <h2 className="panel__title">
+              {business.isVerified ? 'Verified seller ✓' : 'Welcome back 👋'}
+            </h2>
+            <p className="text-muted">
+              Here's how <strong>{business.name}</strong> is doing and where you can act.
+              You buy and sell with the same Seedwel account — nothing here changes your
+              buyer profile.
+            </p>
+          </div>
+          <Link to={`/store/${business.id}`} className="btn btn--ghost btn--sm">
+            View storefront ↗
+          </Link>
+        </div>
+      </div>
+
+      {/* Sales & earnings summary */}
+      <div className="panel mt-16">
+        <h2 className="panel__title">Sales &amp; earnings</h2>
+        <p className="text-muted">
+          Money received from issued receipts, plus the value of orders placed through this store.
+        </p>
+        {loading && <Spinner size="sm" />}
+        {error && <ErrorState message={error} onRetry={() => { receipts.retry(); orders.retry(); }} />}
+        {!loading && !error && (
+          <>
+            <div className="grid grid--4 mt-8">
+              <StatCard
+                label="Received (receipts)"
+                value={formatCurrency(received, currency)}
+                hint={`${receiptList.length} receipt${receiptList.length === 1 ? '' : 's'}`}
+              />
+              <StatCard
+                label="Orders received"
+                value={formatNumber(orderList.length)}
+                hint={`${formatCurrency(orderValue, currency)} order value`}
+              />
+              <StatCard
+                label="Orders in progress"
+                value={formatNumber(openOrders.length)}
+                hint="not yet delivered"
+              />
+              <StatCard
+                label="Awaiting payment"
+                value={formatNumber(pendingPayment.length)}
+                hint={pendingPayment.length ? 'Confirm payments in Orders' : 'All paid'}
+              />
+            </div>
+            <p className="text-muted mt-16" style={{ fontSize: 13 }}>
+              Issuing a receipt when a customer pays, or confirming a payment proof in{" "}
+              <Link to="/seller?tab=orders" className="table__link">Orders</Link>, records the money
+              received above. A receipt is generated automatically whenever you confirm an order's payment.
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Quick actions */}
+      <div className="panel mt-16">
+        <h2 className="panel__title">Quick actions</h2>
+        <div className="grid grid--2 mt-8 overview-actions">
+          {quickLinks.map((action) => (
+            <Link key={action.tab} to={`/seller?tab=${action.tab}`} className="overview-action">
+              <span className="overview-action__icon" aria-hidden="true">{action.icon}</span>
+              <span className="overview-action__text">
+                <strong>{action.label}</strong>
+                <span>{action.desc}</span>
+              </span>
+              <span className="overview-action__go" aria-hidden="true">›</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Getting paid nudge */}
+      {!business.isVerified && (
+        <div className="panel mt-16 dash-toolbar">
+          <div>
+            <h2 className="panel__title">Getting paid</h2>
+            <p className="text-muted">
+              Set up how buyers send you money — mobile money, bank transfer or cash — so checkout
+              shows them exactly what to do.
+            </p>
+          </div>
+          <Link to="/seller?tab=payment-settings" className="btn btn--primary">Set up payment details</Link>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -2031,6 +2185,7 @@ function ProductsTab({ user, business, products, showToast }) {
     }
     setSaving(true);
     try {
+      const typedLocation = form.location.trim();
       const payload = {
         name: form.name.trim(),
         category: form.category,
@@ -2040,15 +2195,33 @@ function ProductsTab({ user, business, products, showToast }) {
         sku: form.sku.trim(),
         stock: num(form.stock),
         unit: form.unit.trim() || 'piece',
-        location: form.location.trim(),
+        location: typedLocation,
         image: form.image.trim(),
       };
       if (editingId) {
         await updateProduct(editingId, payload);
         showToast('Product updated.', 'success');
       } else {
+        // New products are associated with the seller's location (the business
+        // city/area, plus its coarse region/country for ranking) so buyers near
+        // the seller find them first — unless the seller set a specific spot.
+        const productLocation =
+          typedLocation ||
+          business?.city ||
+          business?.region ||
+          business?.country ||
+          '';
+        const sellerPlace = typedLocation
+          ? {}
+          : {
+              city: business?.city || business?.area || '',
+              region: business?.region || '',
+              country: business?.country || '',
+            };
         await createProduct(user.uid, {
           ...payload,
+          location: productLocation,
+          ...sellerPlace,
           businessId: business.id,
           businessName: business.name,
         });
@@ -2160,9 +2333,44 @@ function ProductsTab({ user, business, products, showToast }) {
             value={form.image}
             onChange={(v) => setForm((prev) => ({ ...prev, image: v }))}
           />
+
+          {/* Live preview of the listing exactly as it will look to shoppers. */}
+          {(form.name.trim() || form.image || form.price !== '' || form.category || form.location) && (
+            <div className="product-preview">
+              <span className="product-preview__label">Preview — how shoppers will see it</span>
+              <div className="product-preview__card">
+                <div className="product-preview__media">
+                  {form.image && isValidImageUrl(form.image) ? (
+                    <img src={form.image} alt={form.name || 'Product preview'} />
+                  ) : (
+                    <span className="product-preview__media-empty" aria-hidden="true">📦</span>
+                  )}
+                </div>
+                <div className="product-preview__body">
+                  <strong className="product-preview__name">{form.name.trim() || 'Product name'}</strong>
+                  <span className="product-preview__price">
+                    {formatCurrency(num(form.price), currencyCode(form.currency || business?.currency))}
+                    {form.stock !== '' && (
+                      <em className="product-preview__stock">· {formatNumber(num(form.stock))} in stock</em>
+                    )}
+                  </span>
+                  {(form.category || form.location) && (
+                    <span className="product-preview__meta">
+                      {[form.category, form.location].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <p className="product-preview__hint">
+                Publishing makes this listing live in the Marketplace for buyers near{' '}
+                {form.location.trim() || business?.city || 'your location'}.
+              </p>
+            </div>
+          )}
+
           <div className="dash-actions">
             <Button type="submit" variant="primary" loading={saving}>
-              {editingId ? 'Save changes' : 'List product'}
+              {editingId ? 'Save changes' : 'Publish product'}
             </Button>
             <Button variant="ghost" onClick={reset}>Cancel</Button>
           </div>

@@ -133,6 +133,69 @@ export function rankByLocation(items = [], place, extraFields = []) {
   };
 }
 
+/**
+ * Marketplace "distance" filter options.
+ *
+ * The app deliberately never stores coordinates (see privacy model above), so
+ * a true "within X km" filter is not possible from the coarse place alone. We
+ * instead translate the requested radius into the proximity tiers the data can
+ * actually support, and surface those tiers as distance bands ("Near you",
+ * "Same city/town", …). The widest option shows everywhere, nearest-first.
+ */
+export const PROXIMITY_OPTIONS = [
+  { id: 'any', label: 'Anywhere (nearest first)', maxTier: LOCATION_TIERS.OTHER, helper: 'Every listing, ordered nearest first' },
+  { id: 'area', label: 'Nearest area', maxTier: LOCATION_TIERS.AREA, helper: 'Listings from your immediate area / neighbourhood' },
+  { id: 'city', label: 'Same city / town', maxTier: LOCATION_TIERS.CITY, helper: 'Listings in your area and the wider town or city' },
+  { id: 'region', label: 'Same region', maxTier: LOCATION_TIERS.REGION, helper: 'Listings across your province / region' },
+  { id: 'country', label: 'Same country', maxTier: LOCATION_TIERS.COUNTRY, helper: 'Listings anywhere in your country' },
+];
+
+export function proximityOption(id) {
+  return PROXIMITY_OPTIONS.find((o) => o.id === id) || PROXIMITY_OPTIONS[0];
+}
+
+/**
+ * Splits a listing set into ordered proximity groups for display.
+ *
+ * Each item is ranked against the user's place (tierForEntity) and the result
+ * is filtered to the chosen proximity band. Returns ordered groups
+ * (nearest → furthest) with human "distance band" headings. When `place` is
+ * missing there is nothing to rank against, so `groups` is empty and callers
+ * should fall back to an ungrouped listing.
+ */
+export function rankGroups(items = [], place, band = 'any') {
+  if (!place) return { groups: [], hidden: 0, filtered: items || [], option: proximityOption(band) };
+
+  const option = proximityOption(band);
+  const annotated = (items || []).map((item, index) => ({
+    item,
+    index,
+    tier: tierForEntity(item, place),
+  }));
+
+  // Nearest tier first; keep original order inside a tier (stable).
+  annotated.sort((a, b) => (a.tier !== b.tier ? a.tier - b.tier : a.index - b.index));
+
+  const within =
+    option.maxTier === LOCATION_TIERS.OTHER
+      ? annotated
+      : annotated.filter((entry) => entry.tier <= option.maxTier);
+
+  const groups = [];
+  for (const entry of within) {
+    const last = groups[groups.length - 1];
+    if (last && last.tier === entry.tier) last.items.push(entry.item);
+    else groups.push({ tier: entry.tier, label: LOCATION_TIER_LABELS[entry.tier], items: [entry.item] });
+  }
+
+  return {
+    groups,
+    hidden: annotated.length - within.length,
+    filtered: within.map((entry) => entry.item),
+    option,
+  };
+}
+
 /** Human label of the user's coarse place ("Chama", "Lusaka", …). */
 export function placeLabel(place) {
   if (!place) return '';
