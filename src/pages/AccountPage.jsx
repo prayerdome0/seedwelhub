@@ -44,7 +44,10 @@ export default function AccountPage() {
             <h1 className="account-head__name">{profile?.name || 'My account'}</h1>
             <p className="account-head__mail">{user.email}</p>
             <div className="account-head__badges">
-              <Badge tone={isSeller ? 'success' : 'neutral'}>{isSeller ? 'Seller' : 'Buyer'}</Badge>
+              {/* One account does both — this is never a permanent "buyer" or
+                  "seller" role. */}
+              <Badge tone="info">Buyer</Badge>
+              {isSeller && <Badge tone="success">Seller</Badge>}
               {isSeller && !isVerifiedSeller && <Badge tone="warning">Verification pending</Badge>}
               {isVerifiedSeller && !isAdmin && <Badge tone="success">Verified seller</Badge>}
               {isAdmin && <Badge tone="navy">Admin</Badge>}
@@ -60,6 +63,20 @@ export default function AccountPage() {
           ☰ Account menu
         </button>
       </div>
+
+      {!isSeller && (
+        <div className="sell-cta mb-16" role="region" aria-label="Start selling">
+          <div className="sell-cta__icon" aria-hidden="true">🚀</div>
+          <div className="sell-cta__body">
+            <strong>Want to sell on Seedwel?</strong>
+            <span>
+              You don't need another account — your existing Seedwel account can buy <em>and</em>{' '}
+              sell. Set up a store in a few minutes.
+            </span>
+          </div>
+          <Link to="/sell" className="btn btn--primary btn--sm sell-cta__action">Start Selling</Link>
+        </div>
+      )}
 
       {groups.map((group) => (
         <section key={group.id} className="account-section">

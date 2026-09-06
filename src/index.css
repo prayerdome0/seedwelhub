@@ -1632,6 +1632,89 @@ a.card:hover {
   border-color: var(--green);
 }
 
+/* ---------- Marketplace controls ---------- */
+.mkt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 16px;
+}
+.mkt-controls__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.mkt-controls__label-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.mkt-controls__select {
+  width: auto;
+  min-width: 190px;
+  max-width: 100%;
+}
+.mkt-controls__hint {
+  font-size: 13px;
+  color: var(--text-soft);
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .mkt-controls__label { flex-wrap: wrap; }
+  .mkt-controls__select { width: 100%; min-width: 0; }
+}
+
+/* Compact variant used inside controls and toolbars. */
+.form__select--sm {
+  padding: 7px 30px 7px 10px;
+  font-size: 13.5px;
+}
+
+/* ---------- Start Selling call-out (marketplace, buyers who don't sell yet) */
+.sell-cta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--green);
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--green-soft), var(--surface));
+}
+.sell-cta__icon {
+  flex: 0 0 auto;
+  font-size: 22px;
+  line-height: 1;
+}
+.sell-cta__body {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sell-cta__body strong {
+  color: var(--navy);
+  font-size: 14.5px;
+}
+.sell-cta__body span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.sell-cta__action {
+  flex: 0 0 auto;
+}
+@media (max-width: 520px) {
+  .sell-cta__action { width: 100%; }
+}
+
 /* ---------- Product / business cards ----------
    Compact by design: smaller type and a shorter image frame so noticeably
    more products fit on screen. The media box uses `contain`, so the whole
@@ -2987,6 +3070,70 @@ a.card:hover {
   flex-wrap: wrap;
   margin-top: 16px;
 }
+
+/* Seller dashboard Overview tab */
+.overview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.overview-head__copy { flex: 1 1 220px; min-width: 0; }
+.overview-head__copy .panel__title { margin-bottom: 6px; }
+.overview-head .btn { flex-shrink: 0; }
+.overview-actions { gap: 12px; }
+.overview-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  min-width: 0;
+}
+.overview-action:hover {
+  border-color: var(--green);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.overview-action__icon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--green-soft, #eef7ee);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+}
+.overview-action__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.overview-action__text strong {
+  color: var(--navy);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.overview-action__text span {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.overview-action__go {
+  flex: 0 0 auto;
+  color: var(--text-soft);
+  font-size: 20px;
+  line-height: 1;
+}
+
 .channel-card { display: flex; flex-direction: column; gap: 12px; }
 .channel-card__head { display: flex; gap: 14px; align-items: flex-start; }
 .channel-card__icon {
@@ -3020,6 +3167,80 @@ a.card:hover {
 }
 .image-url-field__preview img { width: 100%; height: 100%; object-fit: cover; }
 .image-url-field__inputs { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+/* Live listing preview inside Add/Edit product */
+.product-preview {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed var(--green);
+  border-radius: var(--radius);
+  background: var(--green-soft);
+}
+.product-preview__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  margin-bottom: 10px;
+}
+.product-preview__card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  max-width: 460px;
+  overflow: hidden;
+}
+.product-preview__media {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--navy-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.product-preview__media img { width: 100%; height: 100%; object-fit: contain; }
+.product-preview__media-empty { font-size: 30px; color: var(--text-soft); }
+.product-preview__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.product-preview__name {
+  font-size: 15px;
+  color: var(--navy);
+  overflow-wrap: anywhere;
+}
+.product-preview__price {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--green-dark);
+}
+.product-preview__stock {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.product-preview__meta {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.product-preview__hint { margin: 10px 0 0; font-size: 12.5px; color: var(--green-dark); }
+@media (max-width: 480px) {
+  .product-preview__card { flex-direction: column; align-items: flex-start; }
+  .product-preview__media { width: 100%; height: 140px; }
+}
 
 .cell-media { display: flex; align-items: center; gap: 10px; }
 .cell-media__img {

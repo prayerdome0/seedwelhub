@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useMarketLocation } from '../contexts/LocationContext';
 import Spinner from '../components/Spinner';
 import Button from '../components/Button';
 import { EmptyState } from '../components/PageState';
@@ -57,6 +58,7 @@ export default function SellerOnboardingPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const { detectLocation } = useMarketLocation();
 
   const myBusinesses = useAsync(
     () => (user ? getBusinessesByOwner(user.uid) : Promise.resolve([])),
@@ -76,6 +78,39 @@ export default function SellerOnboardingPage() {
   const [savingProduct, setSavingProduct] = useState(false);
   const [savingService, setSavingService] = useState(false);
   const [uploading, setUploading] = useState('');
+  const [detectingLoc, setDetectingLoc] = useState(false);
+
+  // Capture & confirm the seller's location. Prefer the browser's approximate
+  // location (coarse town/country only) and let the seller review or edit the
+  // city/area before saving — products and services then inherit this place so
+  // buyers near the seller find them first in the marketplace.
+  const fillLocationFromBrowser = async () => {
+    setDetectingLoc(true);
+    try {
+      const detected = await detectLocation();
+      if (!detected) {
+        showToast('Could not detect your location. Enter your city/area manually below.', 'info');
+        return;
+      }
+      const city = detected.city || detected.area || '';
+      const place = city || detected.region || detected.country;
+      setBusinessForm((prev) => ({
+        ...prev,
+        country: prev.country || detected.country || '',
+        region: prev.region || detected.region || '',
+        city: prev.city || city,
+        address: prev.address || detected.area || '',
+      }));
+      showToast(
+        place ? `Location set to ${place}. Confirm or edit below, then continue.` : 'Location detected.',
+        'success'
+      );
+    } catch (err) {
+      showToast('Could not detect your location. Please enter it manually.', 'error');
+    } finally {
+      setDetectingLoc(false);
+    }
+  };
 
   // Default the selected business to the first one once they load.
   useEffect(() => {
@@ -174,6 +209,20 @@ export default function SellerOnboardingPage() {
       showToast('Please enter a valid price.', 'error');
       return;
     }
+    // Associate the product with the seller's location so buyers near the
+    // seller see it first. If no location was typed, the product takes the
+    // business's city/area (plus its coarse region/country for ranking).
+    const typedLocation = productForm.location.trim();
+    const productLocation =
+      typedLocation || selectedBusiness.city || selectedBusiness.region || selectedBusiness.country || '';
+    const sellerPlaceFields = typedLocation
+      ? {}
+      : {
+          city: selectedBusiness.city || selectedBusiness.area || '',
+          region: selectedBusiness.region || '',
+          country: selectedBusiness.country || '',
+        };
+
     setSavingProduct(true);
     try {
       await createProduct(user.uid, {
@@ -184,7 +233,8 @@ export default function SellerOnboardingPage() {
         description: productForm.description.trim(),
         price,
         currency: currencyCode(productForm.currency || selectedBusiness.currency),
-        location: productForm.location.trim(),
+        location: productLocation,
+        ...sellerPlaceFields,
         image: productImageUrl,
       });
       setProductForm(EMPTY_PRODUCT);
@@ -376,9 +426,23 @@ export default function SellerOnboardingPage() {
           {businessInput('whatsapp', 'WhatsApp', businessForm.whatsapp, '+260 …')}
         </div>
 
-        <h2 className="panel__title mt-16">Location</h2>
+        <div className="dash-toolbar">
+          <h2 className="panel__title mt-16">Location</h2>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm"
+            onClick={fillLocationFromBrowser}
+            disabled={detectingLoc}
+          >
+            {detectingLoc ? 'Detecting…' : '📍 Use my location'}
+          </button>
+        </div>
+        <p className="text-muted" style={{ fontSize: 13, marginTop: -10 }}>
+          Add your city/area — this is where your store and products will appear, so buyers near
+          you find them first. You can detect it automatically or type it in.
+        </p>
         <div className="form__row">
-          {businessInput('city', 'City', businessForm.city, 'Lusaka')}
+          {businessInput('city', 'City / Area', businessForm.city, 'Lusaka')}
           {businessInput('region', 'Region / Province', businessForm.region, 'Lusaka Province')}
         </div>
         <div className="form__row">
