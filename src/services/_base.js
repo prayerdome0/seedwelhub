@@ -7,6 +7,7 @@ import {
   deleteDoc,
   getDoc,
   getDocs,
+  getCountFromServer,
   query,
   where,
   orderBy,
@@ -38,6 +39,16 @@ export function col(name) {
 
 export function docRef(name, id) {
   return doc(db, name, id);
+}
+
+// Firestore aggregation counts return an exact collection total without
+// downloading every listing document to the browser. This powers the public
+// marketplace figures on the homepage.
+export async function countDocuments(name, constraints = []) {
+  const ref = col(name);
+  const target = constraints.length ? query(ref, ...constraints) : ref;
+  const snapshot = await getCountFromServer(target);
+  return Number(snapshot.data()?.count) || 0;
 }
 
 export function subCol(name, docId, subName) {

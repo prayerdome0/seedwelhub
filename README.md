@@ -129,9 +129,13 @@ hover/focus, restarts its timer after any manual navigation, and supports
 touch/pointer **swipe** plus arrow and dot controls. Dots show the active
 banner. Inside the hero, always-visible **feature highlights** (Trusted ·
 Connected · Grow · Support), the search bar and the Products / Businesses /
-Services **statistics** stay beneath the banners. Everything is responsive
-without horizontal overflow; the categories and featured sections below the
-hero are untouched.
+Services **statistics** stay beneath the banners. Those totals come from
+Firestore aggregation counts (not the homepage's capped card queries), and a
+failed count stays visibly unavailable instead of displaying a misleading
+zero. The final homepage call-to-action adapts for guests, buyers, sellers
+awaiting verification and verified sellers, so existing customers are never
+sent back to Sign Up. Everything is responsive without horizontal overflow;
+the categories and featured sections below the hero are untouched.
 
 ---
 

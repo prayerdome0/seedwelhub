@@ -18,9 +18,9 @@ const admin = { isAuthenticated: true, isSeller: true, isVerifiedSeller: true, i
 const flat = (viewer) => MAIN_MENU.flatMap(g => visibleItems(g.items, viewer)).map(i => i.id);
 
 console.log('\nMAIN MENU GATING');
-check('guest sees Home + Marketplace', () => {
+check('guest sees Home, Marketplace and a cart they can fill before signing in', () => {
   const ids = flat(guest);
-  assert.ok(ids.includes('home')); assert.ok(ids.includes('marketplace'));
+  assert.ok(ids.includes('home')); assert.ok(ids.includes('marketplace')); assert.ok(ids.includes('cart'));
 });
 check('guest does NOT see orders/saved/account', () => {
   const ids = flat(guest);
@@ -88,7 +88,7 @@ check('VERIFIED seller gets Seller Dashboard', () => {
 check('seller menu covers required sections', () => {
   const ids = accountMenuFor(verifiedSeller).flatMap(g => g.items.map(i => i.id));
   ['profile','dashboard','products','seller-orders','seller-quotations','seller-invoices',
-   'seller-receipts','seller-payments','customers','notifications','settings']
+   'seller-receipts','seller-payments','seller-help','customers','notifications','settings']
     .forEach(id => assert.ok(ids.includes(id), `${id} missing from seller menu`));
 });
 check('seller also keeps buyer-side purchases', () => {

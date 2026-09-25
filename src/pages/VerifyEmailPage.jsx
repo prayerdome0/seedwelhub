@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { sendVerificationEmail, isEmailVerified, getCurrentUser, friendlyAuthError, logout } from '../firebase/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -8,6 +8,9 @@ import { updateUser } from '../services/userService';
 export default function VerifyEmailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+  const destination = redirectParam?.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : '/';
   const { showToast } = useToast();
   const [status, setStatus] = useState('idle'); // idle | sending | sent | error
   const [message, setMessage] = useState('');
@@ -53,7 +56,7 @@ export default function VerifyEmailPage() {
     if (ok) {
       setMessage('Your email is verified!');
       showToast('Email verified successfully!', 'success');
-      setTimeout(() => navigate('/'), 1200);
+      setTimeout(() => navigate(destination), 1200);
     } else {
       setMessage('Your email is not verified yet. Check your inbox and click the link.');
     }
@@ -110,7 +113,7 @@ export default function VerifyEmailPage() {
 
       <div className="stack mt-24">
         {verified ? (
-          <Link to="/" className="btn btn--primary btn--block">Continue to Seedwel Hub</Link>
+          <Link to={destination} className="btn btn--primary btn--block">Continue to Seedwel Hub</Link>
         ) : (
           <>
             <button

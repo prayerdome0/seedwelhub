@@ -113,6 +113,11 @@ export async function getDocs(refOrQuery) {
   return { docs, empty: docs.length === 0, size: docs.length, forEach: (fn) => docs.forEach(fn) };
 }
 
+export async function getCountFromServer(refOrQuery) {
+  const snapshot = await getDocs(refOrQuery);
+  return { data: () => ({ count: snapshot.size }) };
+}
+
 // ---- writes ----------------------------------------------------------------
 // A marker for `deleteField()` that survives dotted-path expansion.
 const DELETE = Symbol('mock-delete');

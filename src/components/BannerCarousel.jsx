@@ -338,10 +338,11 @@ export default function BannerCarousel({ promoBanners = [] }) {
               </div>
             )}
 
-            <div className="banner-slide__brand" aria-label="Seedwel Hub">
+            <div className="banner-slide__brand" aria-label="Seedwel Hub — Buy, Sell, Manage, Grow">
               <img src={REAL_LOGO} alt="" draggable={false} />
-              <span>
-                Seedwel <strong>Hub</strong>
+              <span className="banner-slide__brand-copy">
+                <span>Seedwel <strong>Hub</strong></span>
+                <small>BUY · SELL · MANAGE · GROW</small>
               </span>
             </div>
           </div>

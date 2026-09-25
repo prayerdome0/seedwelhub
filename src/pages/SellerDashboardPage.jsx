@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import useAsync from '../hooks/useAsync';
 import Button from '../components/Button';
+import ShareTools from '../components/ShareTools';
 import Spinner from '../components/Spinner';
 import StatusBadge from '../components/StatusBadge';
 import { EmptyState, ErrorState } from '../components/PageState';
@@ -55,6 +56,9 @@ import {
 } from '../services/inventoryService';
 import { getServicesByBusiness, updateService } from '../services/serviceService';
 import PaymentSettingsTab from './seller/PaymentSettingsTab';
+import FulfillmentSettings from './seller/FulfillmentSettings';
+import SellerFirstSaleChecklist from './seller/SellerFirstSaleChecklist';
+import SellerHelpTab from './seller/SellerHelpTab';
 import PaymentsTab from './seller/PaymentsTab';
 import CustomersTab from './seller/CustomersTab';
 import PromotionsTab from './seller/PromotionsTab';
@@ -90,6 +94,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'channels', label: 'Where you sell' },
   { id: 'orders', label: 'Orders' },
+  { id: 'help', label: 'Buyer help' },
   { id: 'quotations', label: 'Quotations' },
   { id: 'invoices', label: 'Invoices' },
   { id: 'receipts', label: 'Receipts' },
@@ -282,6 +287,10 @@ export default function SellerDashboardPage() {
     () => (businessId ? getInventoryByBusiness(businessId) : Promise.resolve([])),
     [businessId]
   );
+  const sellerOrders = useAsync(
+    () => (businessId ? getOrdersByBusiness(businessId, 100) : Promise.resolve([])),
+    [businessId]
+  );
 
   const productList = products.data || [];
   const inventoryList = inventory.data || [];
@@ -382,16 +391,25 @@ export default function SellerDashboardPage() {
       </div>
 
       {tab === 'overview' && (
-        <OverviewTab
-          user={user}
-          business={business}
-          stats={stats}
-          productCount={productList.length}
-          lowStock={inventoryList.filter(isLowStock).length}
-        />
+        <>
+          <SellerFirstSaleChecklist
+            business={business}
+            productCount={stats.live}
+            orderCount={sellerOrders.data?.length || 0}
+            ordersLoading={sellerOrders.loading}
+          />
+          <OverviewTab
+            user={user}
+            business={business}
+            stats={stats}
+            productCount={productList.length}
+            lowStock={inventoryList.filter(isLowStock).length}
+          />
+        </>
       )}
       {tab === 'channels' && <ChannelsTab business={business} stats={stats} />}
       {tab === 'orders' && <OrdersTab user={user} business={business} />}
+      {tab === 'help' && <SellerHelpTab user={user} business={business} />}
       {tab === 'quotations' && <QuotationsTab business={business} user={user} />}
       {tab === 'invoices' && <InvoicesTab business={business} />}
       {tab === 'receipts' && <ReceiptsTab business={business} />}
@@ -1950,7 +1968,7 @@ function ChannelsTab({ business, stats }) {
   if (!business) return null;
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const storeUrl = `${origin}/store/${business.id}`;
+  const storeUrl = `${origin}/share/business/${business.id}`;
   const whatsappNumber = (business.whatsapp || business.phone || '').replace(/[^0-9]/g, '');
 
   const copy = async (text) => {
@@ -2070,7 +2088,16 @@ function ChannelsTab({ business, stats }) {
                   {c.linkLabel}
                 </a>
               )}
-              {c.share && (
+              {c.share && c.key === 'store' && (
+                <ShareTools
+                  url={c.share}
+                  title={`${business.name} store`}
+                  description={business.description || `Visit ${business.name} on Seedwel Hub.`}
+                  showQr
+                  compact
+                />
+              )}
+              {c.share && c.key !== 'store' && (
                 <button type="button" className="btn btn--ghost btn--sm" onClick={() => copy(c.share)}>
                   Copy link
                 </button>
@@ -2079,6 +2106,7 @@ function ChannelsTab({ business, stats }) {
           </div>
         ))}
       </div>
+      <FulfillmentSettings business={business} />
     </>
   );
 }

@@ -6,6 +6,7 @@ const LINKS = [
   { to: '/admin/businesses', label: 'Businesses', icon: '🏢' },
   { to: '/admin/products', label: 'Products', icon: '📦' },
   { to: '/admin/orders', label: 'Orders', icon: '🧾' },
+  { to: '/admin/disputes', label: 'Order help & disputes', icon: '🆘' },
   { to: '/admin/payments', label: 'Payments', icon: '💳' },
   { to: '/admin/reports', label: 'Reports', icon: '📄' },
   { to: '/admin/verification', label: 'Verification', icon: '✅' },

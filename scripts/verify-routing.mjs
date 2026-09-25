@@ -27,6 +27,13 @@ check('vercel.json rewrites every non-API path to index.html', () => {
   assert.match(rule.source, /\(\?!api\//, 'rewrite must exclude /api/*');
 });
 
+check('share URLs reach the server-rendered social preview handler', () => {
+  const rule = (vercel.rewrites || []).find((item) => item.source === '/share/:type/:id');
+  assert.ok(rule, 'dynamic share rewrite is missing');
+  assert.equal(rule.destination, '/api/share?type=:type&id=:id');
+  assert.ok(fs.existsSync(path.join(root, 'api/share.js')), 'Vercel share handler is missing');
+});
+
 check('build output settings match the Vite build', () => {
   assert.equal(vercel.outputDirectory, 'dist');
   assert.equal(vercel.buildCommand, 'npm run build');
@@ -62,6 +69,8 @@ console.log('\nCLIENT ROUTES SURVIVE A DIRECT LOAD');
 
 const app = read('src/App.jsx');
 const ROUTES = [
+  '/cart',
+  '/share/:type/:id',
   '/marketplace',
   '/account',
   '/messages',

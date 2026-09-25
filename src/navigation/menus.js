@@ -14,6 +14,7 @@ export const MAIN_MENU = [
     items: [
       { id: 'home', to: '/', icon: '🏠', label: 'Home', end: true },
       { id: 'marketplace', to: '/marketplace', icon: '🛍️', label: 'Marketplace' },
+      { id: 'cart', to: '/cart', icon: '🛒', label: 'Shopping cart' },
       { id: 'deals', to: '/deals', icon: '🔥', label: 'Deals & Promotions' },
       { id: 'orders', to: '/orders', icon: '📦', label: 'My Orders', auth: true },
       { id: 'saved', to: '/saved', icon: '❤️', label: 'Saved / Favorites', auth: true },
@@ -77,6 +78,7 @@ export const SELLER_ACCOUNT_MENU = [
   { id: 'dashboard', to: '/seller', icon: '📊', label: 'Seller Dashboard', verifiedSeller: true },
   { id: 'products', to: '/seller?tab=products', icon: '🛍️', label: 'Products', seller: true },
   { id: 'seller-orders', to: '/seller?tab=orders', icon: '📦', label: 'Orders', seller: true },
+  { id: 'seller-help', to: '/seller?tab=help', icon: '🆘', label: 'Buyer help', seller: true },
   { id: 'seller-quotations', to: '/seller?tab=quotations', icon: '📝', label: 'Quotations', seller: true },
   { id: 'seller-invoices', to: '/seller?tab=invoices', icon: '📄', label: 'Invoices', seller: true },
   { id: 'seller-receipts', to: '/seller?tab=receipts', icon: '🧾', label: 'Receipts', seller: true },

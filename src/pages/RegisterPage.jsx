@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createUser, friendlyAuthError, sendVerificationEmail as firebaseSendVerification, syncProfile } from '../firebase/auth';
 import { ensureUserDocument } from '../services/userService';
 import { uploadImageToCloudinary } from '../cloudinary/upload';
@@ -19,6 +19,8 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const { showToast } = useToast();
 
   const handlePhotoChange = async (event) => {
@@ -77,7 +79,9 @@ export default function RegisterPage() {
       await firebaseSendVerification().catch(() => {});
 
       showToast("Account created! Check your email inbox — and your Spam/Junk folder — for the verification link.", 'success');
-      navigate('/verify-email');
+      navigate(redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
+        ? `/verify-email?redirect=${encodeURIComponent(redirectTo)}`
+        : '/verify-email');
     } catch (err) {
       setError(friendlyAuthError(err));
     } finally {
@@ -192,7 +196,7 @@ export default function RegisterPage() {
       </form>
 
       <div className="auth-card__alt">
-        Already have an account? <Link to="/login">Log in</Link>
+        Already have an account? <Link to={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login'}>Log in</Link>
       </div>
     </div>
   );

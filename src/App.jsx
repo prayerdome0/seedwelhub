@@ -10,6 +10,8 @@ import { useAuth } from './contexts/AuthContext';
 // the shell + the route the user actually visits. The layouts stay eager because
 // they wrap every page.
 const HomePage = lazy(() => import('./pages/HomePage'));
+const CartPage = lazy(() => import('./pages/CartPage'));
+const ShareLandingPage = lazy(() => import('./pages/ShareLandingPage'));
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
@@ -58,6 +60,7 @@ const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminBusinesses = lazy(() => import('./pages/admin/AdminBusinesses'));
 const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminDisputes = lazy(() => import('./pages/admin/AdminDisputes'));
 const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'));
 const AdminVerification = lazy(() => import('./pages/admin/AdminVerification'));
@@ -114,6 +117,8 @@ export default function App() {
           {/* Main app layout */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/share/:type/:id" element={<ShareLandingPage />} />
             <Route path="/marketplace" element={<MarketplacePage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
@@ -169,6 +174,7 @@ export default function App() {
               <Route path="businesses" element={<AdminBusinesses />} />
               <Route path="products" element={<AdminProducts />} />
               <Route path="orders" element={<AdminOrders />} />
+              <Route path="disputes" element={<AdminDisputes />} />
               <Route path="payments" element={<AdminPayments />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="verification" element={<AdminVerification />} />

@@ -21,6 +21,7 @@ const check = async (name, fn) => {
 };
 
 const C = await import('../src/utils/constants.js');
+const { getMarketplaceStats } = await import('../src/services/marketplaceStatsService.js');
 const { placeOrder, getOrder } = await import('../src/services/orderService.js');
 const { submitPaymentProof, confirmPaymentProof, rejectPaymentProof, markProofUnderReview,
         getPendingProofsForBusiness } = await import('../src/services/paymentProofService.js');
@@ -41,6 +42,28 @@ const BUSINESS = {
 
 const notifs = () => [...(store.get(C.COLLECTIONS.NOTIFICATIONS)?.values() || [])];
 const notifsFor = (uid) => notifs().filter((n) => n.recipientId === uid);
+
+// ===========================================================================
+console.log('\nHOMEPAGE MARKETPLACE TOTALS');
+// ===========================================================================
+resetStore();
+store.set(C.COLLECTIONS.PRODUCTS, new Map([
+  ['product-1', { status: 'active' }],
+  ['product-2', { status: 'active' }],
+  ['product-3', { status: 'active' }],
+]));
+store.set(C.COLLECTIONS.BUSINESSES, new Map([
+  ['business-1', { status: 'active' }],
+  ['business-2', { status: 'active' }],
+]));
+store.set(C.COLLECTIONS.SERVICES, new Map([
+  ['service-1', { status: 'active' }],
+]));
+
+await check('homepage totals use complete collection counts, not the capped card queries', async () => {
+  const stats = await getMarketplaceStats();
+  assert.deepEqual(stats, { products: 3, businesses: 2, services: 1 });
+});
 
 // ===========================================================================
 console.log('\nFLOW A — ORDER → PAYMENT → PROOF → CONFIRMATION → RECEIPT');
