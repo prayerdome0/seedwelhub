@@ -7,6 +7,7 @@ import StarRating from '../components/StarRating';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import CheckoutForm from '../components/CheckoutForm';
+import ShareTools from '../components/ShareTools';
 import ImageLightbox from '../components/ImageLightbox';
 import PromoPrice from '../components/PromoPrice';
 import PromoCountdown from '../components/PromoCountdown';
@@ -18,6 +19,7 @@ import { applyPromotion } from '../utils/promotions';
 import { placeOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '../utils/format';
 
 export default function ProductDetailPage() {
@@ -30,6 +32,7 @@ export default function ProductDetailPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const { user, profile } = useAuth();
+  const { addItem } = useCart();
   const { showToast } = useToast();
   const { start: startConversation, starting: startingConversation } = useStartConversation();
   const navigate = useNavigate();
@@ -79,6 +82,26 @@ export default function ProductDetailPage() {
       return;
     }
     setCheckoutOpen((open) => !open);
+  };
+
+  const handleAddToCart = () => {
+    if (!available) {
+      showToast('This product is out of stock.', 'error');
+      return;
+    }
+    if (user?.uid && product.ownerId === user.uid) {
+      showToast('You cannot add your own listing to your shopping cart.', 'error');
+      return;
+    }
+    addItem({
+      ...product,
+      image: currentImage || product.image || product.images?.[0] || '',
+      businessName: sellerName || product.businessName,
+    }, qty);
+    showToast(`${qty} × ${product.name} added to your cart.`, 'success', {
+      duration: 6000,
+      action: { label: 'View cart', onClick: () => navigate('/cart') },
+    });
   };
 
   const handlePlaceOrder = async ({ name, phone, address, paymentMethod, note }) => {
@@ -216,6 +239,15 @@ export default function ProductDetailPage() {
             <h1 className="detail-heading__title">{product.name || 'Unnamed product'}</h1>
             {product.category && <Badge tone="info">{product.category}</Badge>}
             {product.location && <p className="text-muted mt-8">📍 {product.location}</p>}
+            <div className="mt-8">
+              <ShareTools
+                url={`/share/product/${product.id}`}
+                title={product.name || 'Product listing'}
+                description={product.description || ''}
+                showQr
+                compact
+              />
+            </div>
 
             <div className="buy-box mt-16">
               <PromoPrice product={product} size="lg" />
@@ -234,14 +266,16 @@ export default function ProductDetailPage() {
               )}
 
               <div className="buy-box__qty">
-                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
+                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
                 <input
                   type="number"
                   min="1"
+                  max={Number.isFinite(stock) ? stock : undefined}
                   value={qty}
-                  onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+                  onChange={(event) => setQty(Math.min(Number.isFinite(stock) ? Math.max(1, stock) : Infinity, Math.max(1, Number(event.target.value) || 1)))}
+                  aria-label="Quantity"
                 />
-                <button type="button" onClick={() => setQty((q) => q + 1)}>+</button>
+                <button type="button" onClick={() => setQty((q) => Number.isFinite(stock) ? Math.min(Math.max(1, stock), q + 1) : q + 1)} aria-label="Increase quantity" disabled={!available || (Number.isFinite(stock) && qty >= stock)}>+</button>
               </div>
 
               {available ? (
@@ -254,9 +288,14 @@ export default function ProductDetailPage() {
               )}
 
               <div className="mt-16">
-                <Button variant="primary" className="btn--block" onClick={handleBuy}>
-                  Place Order
-                </Button>
+                <div className="product-buy-actions">
+                  <Button variant="outline" className="btn--block" onClick={handleAddToCart} disabled={!available}>
+                    Add to Cart
+                  </Button>
+                  <Button variant="primary" className="btn--block" onClick={handleBuy} disabled={!available}>
+                    Place Order
+                  </Button>
+                </div>
                 {checkoutOpen && (
                   <CheckoutForm
                     buyer={profile}

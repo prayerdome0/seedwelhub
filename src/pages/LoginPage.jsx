@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { signIn, friendlyAuthError } from '../firebase/auth';
 import { useToast } from '../contexts/ToastContext';
 
@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const { showToast } = useToast();
 
   const handleSubmit = async (event) => {
@@ -18,7 +20,7 @@ export default function LoginPage() {
     try {
       await signIn(email.trim(), password);
       showToast('Welcome back to Seedwel Hub!', 'success');
-      navigate('/');
+      navigate(redirectTo?.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/');
     } catch (err) {
       setError(friendlyAuthError(err));
     } finally {
@@ -69,7 +71,7 @@ export default function LoginPage() {
         <Link to="/forgot-password">Forgot password?</Link>
       </div>
       <div className="auth-card__alt">
-        Don't have an account? <Link to="/register">Create one</Link>
+        Don't have an account? <Link to={redirectTo ? `/register?redirect=${encodeURIComponent(redirectTo)}` : '/register'}>Create one</Link>
       </div>
     </div>
   );

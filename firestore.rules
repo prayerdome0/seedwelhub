@@ -96,7 +96,27 @@ service cloud.firestore {
     function ownsBusiness(businessId) {
       return signedIn()
         && businessId != null
+        && businessId != ''
         && get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
+    function isOrderSupportParticipant() {
+      return signedIn()
+        && (resource.data.uid == request.auth.uid
+            || resource.data.ownerId == request.auth.uid
+            || (resource.data.businessId != null
+                && resource.data.businessId != ''
+                && ownsBusiness(resource.data.businessId)));
+    }
+
+    function canCreateOrderSupportTicket() {
+      let orderPath = /databases/$(database)/documents/orders/$(request.resource.data.orderId);
+      return request.resource.data.orderId is string
+        && exists(orderPath)
+        && get(orderPath).data.buyerId == request.auth.uid
+        && request.resource.data.buyerId == request.auth.uid
+        && request.resource.data.ownerId == get(orderPath).data.ownerId
+        && request.resource.data.businessId == get(orderPath).data.businessId;
     }
 
     // ---------- users ----------
@@ -441,9 +461,30 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     match /supportTickets/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn();
-      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid)
+        || (resource.data.kind == 'order_help'
+            && signedIn()
+            && (resource.data.ownerId == request.auth.uid
+                || (resource.data.businessId != null
+                    && resource.data.businessId != ''
+                    && ownsBusiness(resource.data.businessId))));
+      allow create: if isAdmin()
+        || (signedIn()
+            && request.resource.data.uid == request.auth.uid
+            && (request.resource.data.kind != 'order_help' || canCreateOrderSupportTicket()));
+      allow update: if isAdmin()
+        || (signedIn()
+            && resource.data.kind != 'order_help'
+            && resource.data.uid == request.auth.uid)
+        || (isOrderSupportParticipant()
+            && resource.data.kind == 'order_help'
+            && request.resource.data.kind == resource.data.kind
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.buyerId == resource.data.buyerId
+            && request.resource.data.ownerId == resource.data.ownerId
+            && request.resource.data.businessId == resource.data.businessId
+            && request.resource.data.orderId == resource.data.orderId);
       allow delete: if isAdmin();
     }
 

@@ -11,17 +11,19 @@ import { sellerPaymentMethodType } from '../../utils/constants';
 // The actual account details appear on the order page after the order is
 // placed, via <PaymentInstructions />, which verifies ownership first.
 // ---------------------------------------------------------------------------
-export default function AcceptedMethods({ businessId }) {
-  const { data, loading } = useAsync(
+export default function AcceptedMethods({ businessId, methods: suppliedMethods }) {
+  const query = useAsync(
     () => (businessId ? getAcceptedMethodSummary(businessId) : Promise.resolve([])),
     [businessId]
   );
+  const data = suppliedMethods === undefined ? query.data : suppliedMethods;
+  const loading = suppliedMethods === undefined && query.loading;
 
   if (loading || !data || data.length === 0) return null;
 
   return (
     <div className="accepted-methods">
-      <span className="accepted-methods__label">Payment Instructions</span>
+      <span className="accepted-methods__label">Accepted payment methods</span>
       <ul className="accepted-methods__list">
         {data.map((method) => {
           const type = sellerPaymentMethodType(method.type);

@@ -23,6 +23,7 @@ import {
   PROOF_STATUS,
 } from '../utils/constants';
 import { formatCurrency, formatDate } from '../utils/format';
+import OrderHelpPanel from '../components/orders/OrderHelpPanel';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -225,6 +226,8 @@ export default function OrderDetailPage() {
               })}
             </div>
           </div>
+
+          <OrderHelpPanel order={order} isBuyer={isBuyer} isSeller={isSeller} />
         </div>
 
         <aside className="detail-aside">
@@ -232,7 +235,8 @@ export default function OrderDetailPage() {
             <h3 className="panel__title">Summary</h3>
             <dl className="kv">
               <dt>Subtotal</dt><dd>{formatCurrency(order.subtotal, order.currency)}</dd>
-              <dt>Delivery</dt><dd>{formatCurrency(order.deliveryFee, order.currency)}</dd>
+              <dt>Fulfillment</dt><dd>{order.fulfillmentMethod === 'delivery' ? 'Delivery' : order.fulfillmentMethod === 'pickup' ? 'Pickup' : 'To be arranged'}</dd>
+              <dt>Delivery fee</dt><dd>{formatCurrency(order.deliveryFee, order.currency)}</dd>
               <dt>Total</dt><dd>{formatCurrency(order.total, order.currency)}</dd>
               <dt>Payment</dt><dd><StatusBadge status={order.paymentStatus} /></dd>
             </dl>
@@ -272,7 +276,9 @@ export default function OrderDetailPage() {
             <dl className="kv">
               {order.businessName && (<><dt>Business</dt><dd>{order.businessName}</dd></>)}
               {order.buyerName && (<><dt>Buyer</dt><dd>{order.buyerName}</dd></>)}
-              {order.address && (<><dt>Delivery</dt><dd>{order.address}</dd></>)}
+              {order.buyerPhone && (<><dt>Buyer phone</dt><dd>{order.buyerPhone}</dd></>)}
+              {order.address && (<><dt>{order.fulfillmentMethod === 'pickup' ? 'Pickup area' : 'Delivery address'}</dt><dd>{order.address}</dd></>)}
+              {order.fulfillmentInstructions && (<><dt>Fulfillment notes</dt><dd>{order.fulfillmentInstructions}</dd></>)}
             </dl>
           </div>
         </aside>

@@ -190,11 +190,16 @@ const { SidePanel, SearchPanel, MediaPanel, ReportDialog } = await import('../sr
 const chatUtils = await import('../src/utils/chat.js');
 
 const stamp = (date) => ({ seconds: Math.floor(date.getTime() / 1000), nanoseconds: 0 });
-const now = new Date('2026-09-03T12:00:00');
+const now = new Date();
+const yesterday = new Date(now);
+yesterday.setDate(yesterday.getDate() - 1);
+yesterday.setHours(now.getHours(), 0, 0, 0);
+const today = new Date(now);
+today.setMinutes(0, 0, 0);
 const sampleMessages = [
-  { id: 'm1', senderId: 'u2', senderName: 'Bob', text: 'Morning! Check the price list', type: 'text', createdAt: stamp(new Date('2026-09-02T09:00:00')), readBy: ['u1', 'u2'] },
-  { id: 'm2', senderId: 'u1', text: 'Here it is', type: 'file', mediaUrl: 'https://x.test/f.pdf', mediaName: 'prices.pdf', mediaSize: 4096, createdAt: stamp(new Date('2026-09-03T10:00:00')), readBy: ['u1'] },
-  { id: 'm3', senderId: 'u2', text: '', type: 'voice', mediaUrl: 'https://x.test/v.webm', durationMs: 12000, createdAt: stamp(new Date('2026-09-03T10:05:00')), readBy: ['u1', 'u2'], reactions: { '👍': ['u1'] } },
+  { id: 'm1', senderId: 'u2', senderName: 'Bob', text: 'Morning! Check the price list', type: 'text', createdAt: stamp(yesterday), readBy: ['u1', 'u2'] },
+  { id: 'm2', senderId: 'u1', text: 'Here it is', type: 'file', mediaUrl: 'https://x.test/f.pdf', mediaName: 'prices.pdf', mediaSize: 4096, createdAt: stamp(today), readBy: ['u1'] },
+  { id: 'm3', senderId: 'u2', text: '', type: 'voice', mediaUrl: 'https://x.test/v.webm', durationMs: 12000, createdAt: stamp(today), readBy: ['u1', 'u2'], reactions: { '👍': ['u1'] } },
   { id: 'm4', senderId: 'u1', text: '🎉', type: 'sticker', createdAt: stamp(now), readBy: ['u1'] },
   { id: 'm5', senderId: 'u2', type: 'location', location: { lat: -15.4, lng: 28.2, label: 'Warehouse' }, createdAt: stamp(now), readBy: ['u2'] },
   { id: 'm6', senderId: 'u2', type: 'system', text: 'Bob joined the group', createdAt: stamp(now), readBy: ['u2'] },
@@ -372,6 +377,8 @@ const { default: PromoCountdown } = await import('../src/components/PromoCountdo
 const { default: DealSection } = await import('../src/components/DealSection.jsx');
 const { default: ImageLightbox } = await import('../src/components/ImageLightbox.jsx');
 const { default: BannerCarousel } = await import('../src/components/BannerCarousel.jsx');
+const { default: HomePage } = await import('../src/pages/HomePage.jsx');
+const { AuthContext } = await import('../src/contexts/AuthContext.jsx');
 
 console.log('\nMARKETPLACE & PROMOTIONS UI');
 
@@ -445,6 +452,50 @@ check('the hero banner puts the photo in the background behind a scrim', () => {
   assert.match(html, /banner-slide__scrim/);
   // The wording sits in its own layer on top of the photo.
   assert.match(html, /banner-slide__content/);
+  assert.match(html, /BUY · SELL · MANAGE · GROW/);
+});
+
+check('guest homepage CTA invites account creation and marketplace discovery', () => {
+  const html = render(h(AuthContext.Provider, {
+    value: { user: null, loading: false, businessesLoading: false, isSeller: false, isVerifiedSeller: false },
+  }, h(HomePage)));
+  assert.match(html, /Create an account/);
+  assert.match(html, /Explore marketplace/);
+  assert.match(html, /Good trade starts with good connections/);
+});
+
+check('homepage avoids a Sign Up CTA while the account status is loading', () => {
+  const html = render(h(AuthContext.Provider, {
+    value: { user: null, loading: true, businessesLoading: true, isSeller: false, isVerifiedSeller: false },
+  }, h(HomePage)));
+  assert.match(html, /Find your next opportunity/);
+  assert.match(html, /Explore marketplace/);
+  assert.ok(!/Create an account/.test(html));
+});
+
+check('signed-in buyer homepage CTA starts seller setup instead of sending them to Sign Up', () => {
+  const html = render(h(AuthContext.Provider, {
+    value: { user: { uid: 'buyer-1' }, loading: false, businessesLoading: false, isSeller: false, isVerifiedSeller: false },
+  }, h(HomePage)));
+  assert.match(html, /Start selling/);
+  assert.match(html, /Turn your next idea into a business/);
+  assert.ok(!/Create an account/.test(html));
+});
+
+check('a seller homepage CTA opens their dashboard when verified', () => {
+  const html = render(h(AuthContext.Provider, {
+    value: { user: { uid: 'seller-1' }, loading: false, businessesLoading: false, isSeller: true, isVerifiedSeller: true },
+  }, h(HomePage)));
+  assert.match(html, /Open seller dashboard/);
+  assert.match(html, /Keep your business moving/);
+});
+
+check('a seller with pending verification is routed to setup', () => {
+  const html = render(h(AuthContext.Provider, {
+    value: { user: { uid: 'seller-2' }, loading: false, businessesLoading: false, isSeller: true, isVerifiedSeller: false },
+  }, h(HomePage)));
+  assert.match(html, /Complete seller setup/);
+  assert.match(html, /Your store is nearly ready/);
 });
 
 check('a seller promo banner is prepended to the carousel with its countdown', () => {

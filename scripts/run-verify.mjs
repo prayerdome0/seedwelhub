@@ -19,11 +19,13 @@ const UNIT_SUITES = [
   '/scripts/verify-security.mjs',
   '/scripts/verify-promotions.mjs',
   '/scripts/verify-render.mjs',
+  '/scripts/verify-commerce.mjs',
 ];
 
 // Suites that need the Firestore mock swapped in.
 const FLOW_SUITES = [
   '/scripts/verify-flows.mjs',
+  '/scripts/verify-support.mjs',
   '/scripts/verify-messaging.mjs',
   '/scripts/verify-groups.mjs',
 ];

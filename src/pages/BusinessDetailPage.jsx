@@ -7,6 +7,7 @@ import Spinner from '../components/Spinner';
 import ReviewsSection from '../components/ReviewsSection';
 import ProductCard from '../components/ProductCard';
 import ServiceCard from '../components/ServiceCard';
+import ShareTools from '../components/ShareTools';
 import { NotFoundState, ErrorState, LoadingState, EmptyState } from '../components/PageState';
 import useDocument from '../hooks/useDocument';
 import useAsync from '../hooks/useAsync';
@@ -98,6 +99,17 @@ export default function BusinessDetailPage() {
           <p>{business.description}</p>
         </div>
       )}
+
+      <div className="panel mt-16 storefront-share-panel">
+        <h2 className="panel__title">Share this storefront</h2>
+        <p className="text-muted">Send the store link to customers, or download its QR code for posters and packaging.</p>
+        <ShareTools
+          url={`/share/business/${business.id}`}
+          title={`${business.name || 'Business'} store`}
+          description={business.description || `Visit ${business.name || 'this business'} on Seedwel Hub.`}
+          showQr
+        />
+      </div>
 
       {/* Contact details */}
       <div className="panel mt-16">

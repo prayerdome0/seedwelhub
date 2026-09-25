@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { REAL_LOGO } from '../assets';
 import { useAuth } from '../contexts/AuthContext';
 import SearchBar from '../components/SearchBar';
@@ -8,6 +8,7 @@ import MainMenuDrawer from '../components/navigation/MainMenuDrawer';
 import AccountMenuDrawer from '../components/navigation/AccountMenuDrawer';
 import NotificationBell from '../components/navigation/NotificationBell';
 import { APP_NAME } from '../utils/constants';
+import { useCart } from '../contexts/CartContext';
 
 // ---------------------------------------------------------------------------
 // The application header, identical on every screen:
@@ -20,9 +21,9 @@ import { APP_NAME } from '../utils/constants';
 // ---------------------------------------------------------------------------
 export default function Header() {
   const { user, profile } = useAuth();
+  const { count } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const navigate = useNavigate();
 
   return (
     <>
@@ -59,6 +60,11 @@ export default function Header() {
           </div>
 
           <div className="site-header__actions">
+            <Link to="/cart" className="header-cart-btn" aria-label={`Shopping cart, ${count} item${count === 1 ? '' : 's'}`}>
+              <span aria-hidden="true">🛒</span>
+              <span className="header-cart-btn__label">Cart</span>
+              {count > 0 && <span className="header-cart-btn__count">{count > 99 ? '99+' : count}</span>}
+            </Link>
             {user ? (
               <>
                 <NotificationBell />

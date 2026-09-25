@@ -20,11 +20,12 @@ export default function DealSection({
   linkLabel = 'See all →',
   showEmpty = false,
   emptyMessage = 'Nothing here just yet — check back soon.',
+  className = '',
 }) {
   if (!loading && !products.length && !showEmpty) return null;
 
   return (
-    <section className="section">
+    <section className={`section ${className}`.trim()}>
       <div className="deal-section__header">
         <div>
           <h2 className="deal-section__title">

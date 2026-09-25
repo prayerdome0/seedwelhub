@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { LocationProvider } from './contexts/LocationContext';
+import { CartProvider } from './contexts/CartContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
@@ -50,7 +51,9 @@ function Root() {
           <AuthProvider>
             <NotificationProvider>
               <LocationProvider>
-                <App />
+                <CartProvider>
+                  <App />
+                </CartProvider>
               </LocationProvider>
             </NotificationProvider>
           </AuthProvider>

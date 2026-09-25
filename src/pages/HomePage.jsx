@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
+import LocationBar from '../components/LocationBar';
 import ProductCard from '../components/ProductCard';
 import BusinessCard from '../components/BusinessCard';
 import ServiceCard from '../components/ServiceCard';
@@ -21,6 +22,68 @@ import { getFeaturedBusinesses } from '../services/businessService';
 import { getLatestServices } from '../services/serviceService';
 import { BUSINESS_CATEGORIES } from '../utils/constants';
 import { useMarketLocation } from '../contexts/LocationContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getMarketplaceStats } from '../services/marketplaceStatsService';
+
+function homepageCtaFor({ user, isSeller, isVerifiedSeller, isLoading }) {
+  if (isLoading) {
+    return {
+      eyebrow: 'Welcome to Seedwel Hub',
+      title: 'Find your next opportunity.',
+      body: 'Explore trusted products, local businesses and services while we prepare your account experience.',
+      primaryLabel: 'Explore marketplace',
+      primaryTo: '/marketplace',
+      secondaryLabel: 'Browse services',
+      secondaryTo: '/services',
+    };
+  }
+
+  if (!user) {
+    return {
+      eyebrow: 'Buy · Sell · Grow',
+      title: 'Good trade starts with good connections.',
+      body: 'Discover trusted listings, or create your free account to open a store and reach new customers.',
+      primaryLabel: 'Create an account',
+      primaryTo: '/register',
+      secondaryLabel: 'Explore marketplace',
+      secondaryTo: '/marketplace',
+    };
+  }
+
+  if (isSeller && isVerifiedSeller) {
+    return {
+      eyebrow: 'Your business, in one hub',
+      title: 'Keep your business moving.',
+      body: 'Manage products, orders, promotions and customer conversations from one workspace.',
+      primaryLabel: 'Open seller dashboard',
+      primaryTo: '/seller',
+      secondaryLabel: 'Browse marketplace',
+      secondaryTo: '/marketplace',
+    };
+  }
+
+  if (isSeller) {
+    return {
+      eyebrow: 'One account. Both sides of trade.',
+      title: 'Your store is nearly ready.',
+      body: 'Complete your business setup and verification to unlock your seller dashboard.',
+      primaryLabel: 'Complete seller setup',
+      primaryTo: '/sell',
+      secondaryLabel: 'Explore marketplace',
+      secondaryTo: '/marketplace',
+    };
+  }
+
+  return {
+    eyebrow: 'One account. Both sides of trade.',
+    title: 'Turn your next idea into a business.',
+    body: 'Use your existing Seedwel account to open a store, list products and grow your customer base.',
+    primaryLabel: 'Start selling',
+    primaryTo: '/sell',
+    secondaryLabel: 'Keep exploring',
+    secondaryTo: '/marketplace',
+  };
+}
 
 export default function HomePage() {
   // Products are decorated with their live promotion in one extra read, so
@@ -33,7 +96,15 @@ export default function HomePage() {
   const banners = useAsync(() => getActiveBanners(4), []);
   const featuredBusinesses = useAsync(() => getFeaturedBusinesses(6), []);
   const services = useAsync(() => getLatestServices(8), []);
+  const marketplaceStats = useAsync(getMarketplaceStats, []);
   const { label: locationLabel } = useMarketLocation();
+  const {
+    user,
+    loading: authLoading,
+    businessesLoading,
+    isSeller,
+    isVerifiedSeller,
+  } = useAuth();
 
   const all = products.data || [];
 
@@ -75,12 +146,40 @@ export default function HomePage() {
   }, [all, locationLabel]);
 
   const livePromotions = promotions.data || [];
+  const accountLoading = authLoading || (Boolean(user) && businessesLoading);
+  const homepageCta = homepageCtaFor({
+    user,
+    isSeller,
+    isVerifiedSeller,
+    isLoading: accountLoading,
+  });
+
+  const statValue = (key) => {
+    if (marketplaceStats.loading) return '…';
+    if (marketplaceStats.error || !Number.isFinite(marketplaceStats.data?.[key])) return '—';
+    return new Intl.NumberFormat().format(marketplaceStats.data[key]);
+  };
 
   return (
     <div>
       {/* Hero — five auto-scrolling professional banners + search + stats */}
       <section className="hero">
         <div className="container">
+          <div className="hero__mobile-discovery">
+            <SearchBar variant="large" placeholder="Search products, businesses, services…" />
+            <LocationBar noun="products" className="hero__location" />
+            <div className="hero__mobile-category-block">
+              <div className="hero__mobile-category-heading">Browse categories</div>
+              <div className="hero__mobile-categories">
+                <Link to="/marketplace" className="chip">All</Link>
+                {BUSINESS_CATEGORIES.slice(0, 8).map((category) => (
+                  <Link key={category} to={`/search?category=${encodeURIComponent(category)}`} className="chip">
+                    {category}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
           <BannerCarousel promoBanners={banners.data || []} />
 
           <div className="hero__features">
@@ -119,15 +218,21 @@ export default function HomePage() {
           </div>
           <div className="hero__stats">
             <div className="hero__stat">
-              <div className="hero__stat-value">{products.data?.length || 0}+</div>
+              <div className="hero__stat-value" aria-live="polite" aria-busy={marketplaceStats.loading}>
+                {statValue('products')}
+              </div>
               <div className="hero__stat-label">Products</div>
             </div>
             <div className="hero__stat">
-              <div className="hero__stat-value">{featuredBusinesses.data?.length || 0}+</div>
+              <div className="hero__stat-value" aria-live="polite" aria-busy={marketplaceStats.loading}>
+                {statValue('businesses')}
+              </div>
               <div className="hero__stat-label">Businesses</div>
             </div>
             <div className="hero__stat">
-              <div className="hero__stat-value">{services.data?.length || 0}+</div>
+              <div className="hero__stat-value" aria-live="polite" aria-busy={marketplaceStats.loading}>
+                {statValue('services')}
+              </div>
               <div className="hero__stat-label">Services</div>
             </div>
           </div>
@@ -139,7 +244,7 @@ export default function HomePage() {
 
       <div className="container page">
         {/* Categories */}
-        <section className="section">
+        <section className="section home-desktop-categories">
           <div className="section__header">
             <h2 className="section__title">Browse by category</h2>
             <Link to="/marketplace" className="section__link">View Marketplace →</Link>
@@ -162,6 +267,7 @@ export default function HomePage() {
           subtitle="The biggest savings on Seedwel Hub right now"
           products={sections.best}
           loading={products.loading}
+          className="home-product-rail"
         />
 
         <DealSection
@@ -170,6 +276,7 @@ export default function HomePage() {
           subtitle="Ending within 24 hours — grab them before the timer runs out"
           products={sections.flash}
           loading={products.loading}
+          className="home-secondary-section"
         />
 
         <DealSection
@@ -178,11 +285,12 @@ export default function HomePage() {
           subtitle="Every product with at least 10% off its usual price"
           products={sections.tenPlus}
           loading={products.loading}
+          className="home-secondary-section"
         />
 
         {/* Seller promotions — the campaigns themselves, not the products */}
         {livePromotions.length > 0 && (
-          <section className="section">
+          <section className="section home-secondary-section">
             <div className="deal-section__header">
               <div>
                 <h2 className="deal-section__title">
@@ -225,6 +333,7 @@ export default function HomePage() {
           products={sections.near}
           loading={products.loading}
           to="/marketplace"
+          className="home-secondary-section"
         />
 
         {/* New arrivals — always shown, it is the page's baseline listing */}
@@ -274,7 +383,7 @@ export default function HomePage() {
         </section>
 
         {/* Services */}
-        <section className="section">
+        <section className="section home-secondary-section">
           <div className="section__header">
             <h2 className="section__title">Popular services</h2>
             <Link to="/services" className="section__link">See all →</Link>
@@ -293,15 +402,20 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* CTA */}
-        <section className="section">
-          <div className="panel panel--muted text-center">
-            <h2 className="section__title">Ready to grow your business?</h2>
-            <p className="text-muted">Create an account to list products, manage orders and connect with customers.</p>
-            <div className="flex gap-16 justify-center mt-16">
-              <Link to="/register" className="btn btn--primary">Get Started</Link>
-              <Link to="/marketplace" className="btn btn--secondary">Explore Marketplace</Link>
-            </div>
+        {/* Account-aware next step: no logged-in customer is sent back to Sign Up. */}
+        <section className="section home-cta" aria-labelledby="home-cta-title">
+          <div className="home-cta__copy">
+            <p className="home-cta__eyebrow">{homepageCta.eyebrow}</p>
+            <h2 className="home-cta__title" id="home-cta-title">{homepageCta.title}</h2>
+            <p className="home-cta__body">{homepageCta.body}</p>
+          </div>
+          <div className="home-cta__actions">
+            <Link to={homepageCta.primaryTo} className="btn btn--primary">
+              {homepageCta.primaryLabel}
+            </Link>
+            <Link to={homepageCta.secondaryTo} className="btn btn--hero">
+              {homepageCta.secondaryLabel}
+            </Link>
           </div>
         </section>
       </div>
