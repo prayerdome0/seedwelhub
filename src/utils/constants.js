@@ -2,6 +2,9 @@
 
 export const APP_NAME = 'Seedwel Hub';
 export const APP_TAGLINE = 'Buy. Sell. Manage. Grow.';
+// Canonical public origin used for share metadata, sitemaps and docs.
+// At runtime most surfaces still prefer `window.location.origin`.
+export const APP_ORIGIN = 'https://seedwelhub.com';
 
 export const DEFAULT_ROLE = 'user';
 export const ADMIN_ROLE = 'admin';

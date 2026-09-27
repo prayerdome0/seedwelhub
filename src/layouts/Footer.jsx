@@ -30,8 +30,9 @@ export default function Footer() {
           </div>
           <div className="site-footer__col">
             <h4>Company</h4>
+            <Link to="/about/company">About Seedwel</Link>
+            <Link to="/about/services">Our Services</Link>
             <span>Seedwel Investment Limited</span>
-            <span>Phiko Trading</span>
           </div>
         </div>
       </div>

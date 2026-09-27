@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import Button from '../Button';
 import { useToast } from '../../contexts/ToastContext';
-import { generateDocumentPdf } from '../../documents/pdf';
 
 // Shared "Download PDF" action for every Seedwel Hub document.
+// The PDF generator (and its ~350KB jsPDF dependency) is loaded only when the
+// user actually clicks download — never on first paint.
 export default function DownloadPdfButton({
   document: doc,
   label = 'Download PDF',
@@ -19,6 +20,7 @@ export default function DownloadPdfButton({
     if (!doc) return;
     setBusy(true);
     try {
+      const { generateDocumentPdf } = await import('../../documents/pdf');
       await generateDocumentPdf(doc);
       showToast('PDF downloaded.', 'success');
     } catch (err) {
