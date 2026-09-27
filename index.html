@@ -2,14 +2,107 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#0f1f33" />
+    <meta name="color-scheme" content="light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Seedwel Hub" />
+    <meta name="application-name" content="Seedwel Hub" />
+    <meta name="msapplication-TileColor" content="#0f1f33" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Seedwel Hub — Buy. Sell. Manage. Grow.</title>
+    <meta
+      name="title"
+      content="Seedwel Hub — Buy. Sell. Manage. Grow."
+    />
     <meta
       name="description"
       content="Seedwel Hub — an all-in-one marketplace and business platform. Buy, sell, manage and grow with Seedwel. Connect with trusted businesses, products and services."
     />
+    <meta
+      name="keywords"
+      content="Seedwel Hub, marketplace, buy, sell, businesses, products, services, quotations, invoices, receipts, Africa commerce"
+    />
+    <meta name="author" content="Seedwel Investment Limited" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://seedwelhub.com/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Seedwel Hub" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://seedwelhub.com/" />
+    <meta property="og:title" content="Seedwel Hub — Buy. Sell. Manage. Grow." />
+    <meta
+      property="og:description"
+      content="An all-in-one marketplace and business platform. Buy, sell, manage and grow with Seedwel."
+    />
+    <meta property="og:image" content="https://seedwelhub.com/seedwel-og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Seedwel Hub — Buy. Sell. Manage. Grow." />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Seedwel Hub — Buy. Sell. Manage. Grow." />
+    <meta
+      name="twitter:description"
+      content="An all-in-one marketplace and business platform. Buy, sell, manage and grow with Seedwel."
+    />
+    <meta name="twitter:image" content="https://seedwelhub.com/seedwel-og.png" />
+    <meta name="twitter:image:alt" content="Seedwel Hub" />
+
+    <!-- Icons & PWA -->
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <title>Seedwel Hub — Buy. Sell. Manage. Grow.</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Faster connections to backend / media hosts -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://firebase.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+    <link rel="dns-prefetch" href="https://api.cloudinary.com" />
+    <link rel="dns-prefetch" href="https://www.gstatic.com" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Seedwel Hub",
+        "legalName": "Seedwel Investment Limited",
+        "url": "https://seedwelhub.com",
+        "logo": "https://seedwelhub.com/Reallogo.png",
+        "description": "An all-in-one marketplace and business platform. Buy, sell, manage and grow with Seedwel.",
+        "slogan": "Buy. Sell. Manage. Grow."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Seedwel Hub",
+        "url": "https://seedwelhub.com",
+        "description": "Marketplace and business platform for products, services and local businesses.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://seedwelhub.com/search?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

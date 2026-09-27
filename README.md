@@ -73,6 +73,66 @@ npm run build
 npm run preview
 ```
 
+### 5. Verify before shipping
+
+```bash
+npm run verify          # full offline suite (docs, routing, commerce, chat…)
+npm run predeploy       # verify + production build
+```
+
+---
+
+## Deploy
+
+The app is a **Vite SPA** with one serverless share endpoint. Production builds
+output to `dist/`.
+
+### Vercel (recommended)
+
+1. Import the GitHub repo in the [Vercel dashboard](https://vercel.com/).
+2. Framework preset is auto-detected via `vercel.json` (`vite`, `dist`).
+3. Set the public env vars from `.env.example` (or rely on the compiled defaults).
+4. Deploy. SPA deep links and `/share/:type/:id` social previews are already
+   wired through `vercel.json` rewrites and `api/share.js`.
+5. Point your custom domain (e.g. `seedwelhub.com`) at the project.
+
+```bash
+npx vercel --prod
+```
+
+### Firebase Hosting
+
+```bash
+npm run build
+npx firebase deploy --only hosting,firestore:rules
+```
+
+`firebase.json` serves `dist/`, rewrites every path to `index.html`, and keeps
+the FCM service worker uncached. Note: the `/share/:type/:id` Open Graph
+handler is a Vercel serverless function — on pure Firebase Hosting, crawlers
+fall back to the client-side `ShareLandingPage`.
+
+### Static hosts (Netlify, Cloudflare Pages, GitHub Pages, …)
+
+1. Build command: `npm run build`
+2. Publish directory: `dist`
+3. SPA fallback is provided by `public/_redirects` (`/* /index.html 200`) and
+   `public/404.html` (sessionStorage deep-link bounce for hosts that only
+   support a custom 404 page).
+
+### Production checklist
+
+| Item | Status |
+| --- | --- |
+| `npm run verify` passes | required |
+| `npm run build` succeeds | required |
+| Firestore rules deployed (`firestore.rules`) | required |
+| Firebase Auth: Email/Password enabled | required |
+| Cloudinary unsigned `seedwel` preset | required |
+| FCM web push + public VAPID key | optional (push) |
+| Custom domain + HTTPS | recommended |
+| `robots.txt` / `sitemap.xml` / PWA `manifest.json` | shipped in `public/` |
+
 ---
 
 ## Backend Setup (once, in the Firebase console)
@@ -311,6 +371,12 @@ an optimization boundary, not a correctness one.
 
 ## Notes
 
-- The build splits Firebase, React, and vendor code into separate chunks.
+- The build splits Firebase and React into separate chunks; jsPDF is only
+  downloaded the first time a user generates a PDF.
 - Collections are created only as required by implemented features.
 - No Supabase, no second database, no Cloudinary folders.
+- PWA install metadata lives in `public/manifest.json`. Push delivery still
+  uses `public/firebase-messaging-sw.js` (no competing offline SW is registered,
+  so we never break FCM background messages).
+- Security headers (nosniff, Referrer-Policy, frame denial, HSTS, Permissions-Policy)
+  are set in `vercel.json` and mirrored in `firebase.json` for Hosting.

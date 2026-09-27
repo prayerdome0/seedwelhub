@@ -1,0 +1,55 @@
+# Seedwel Hub — https://seedwelhub.com/robots.txt
+User-agent: *
+Allow: /
+
+# Public marketplace surfaces
+Allow: /marketplace
+Allow: /products
+Allow: /services
+Allow: /businesses
+Allow: /deals
+Allow: /search
+Allow: /about/
+Allow: /share/
+Allow: /product/
+Allow: /service/
+Allow: /business/
+Allow: /store/
+Allow: /verify/
+
+# Private / authenticated areas — no value for crawlers
+Disallow: /admin
+Disallow: /admin/
+Disallow: /messages
+Disallow: /messages/
+Disallow: /groups
+Disallow: /groups/
+Disallow: /group/
+Disallow: /account
+Disallow: /account/
+Disallow: /profile
+Disallow: /settings
+Disallow: /orders
+Disallow: /order/
+Disallow: /payments
+Disallow: /payment/
+Disallow: /invoices
+Disallow: /invoice/
+Disallow: /quotations
+Disallow: /quotation/
+Disallow: /receipts
+Disallow: /receipt/
+Disallow: /notifications
+Disallow: /seller
+Disallow: /seller/
+Disallow: /sell
+Disallow: /cart
+Disallow: /saved
+Disallow: /forgot-password
+Disallow: /verify-email
+
+# API and service workers
+Disallow: /api/
+Disallow: /firebase-messaging-sw.js
+
+Sitemap: https://seedwelhub.com/sitemap.xml
